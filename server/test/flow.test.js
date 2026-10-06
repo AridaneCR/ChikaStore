@@ -1,0 +1,149 @@
+// Pruebas de extremo a extremo con una MongoDB en memoria.  Ejecuta: npm test
+const { test, before, after } = require('node:test');
+const assert = require('node:assert/strict');
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+const { MongoMemoryServer } = require('mongodb-memory-server');
+
+process.env.JWT_SECRET = 'test-secret';
+const { createApp } = require('../src/app');
+const User = require('../src/models/User');
+const Order = require('../src/models/Order');
+const { generateOrderCode } = require('../src/services/orderCode');
+
+let mongo;
+let server;
+let base;
+
+async function call(path, { method = 'GET', body, token } = {}) {
+  const res = await fetch(`${base}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return { status: res.status, data: await res.json() };
+}
+
+before(async () => {
+  mongo = await MongoMemoryServer.create();
+  await mongoose.connect(mongo.getUri());
+  await Promise.all([User.init(), Order.init()]);
+  server = createApp().listen(0);
+  base = `http://127.0.0.1:${server.address().port}/api`;
+});
+
+after(async () => {
+  server.close();
+  await mongoose.disconnect();
+  await mongo.stop();
+});
+
+test('flujo completo: registro, compra en coins y en euros, pago en tienda, cancelación', async () => {
+  // Admin
+  await User.create({ fullName: 'Admin', dni: '00000000T', email: 'admin@test.com', password: await bcrypt.hash('adminadmin', 10), role: 'admin' });
+  const adminLogin = await call('/auth/login', { method: 'POST', body: { identifier: 'admin@test.com', password: 'adminadmin' } });
+  assert.equal(adminLogin.status, 200);
+  const admin = adminLogin.data.token;
+
+  // Registro con DNI inválido → error
+  const bad = await call('/auth/register', { method: 'POST', body: { fullName: 'X', dni: '12345678A', email: 'x@test.com', password: '12345678' } });
+  assert.equal(bad.status, 400);
+
+  const reg = await call('/auth/register', { method: 'POST', body: { fullName: 'Ana Pérez', dni: '12345678Z', email: 'ana@test.com', password: '12345678' } });
+  assert.equal(reg.status, 201);
+  const ana = reg.data.token;
+  const anaId = reg.data.user.id;
+
+  // Login por DNI
+  assert.equal((await call('/auth/login', { method: 'POST', body: { identifier: '12345678z', password: '12345678' } })).status, 200);
+
+  // Producto con dos precios
+  const prod = await call('/admin/products', { method: 'POST', token: admin, body: { name: 'Poción', priceEurCents: 500, priceCoins: 600, stock: 10 } });
+  assert.equal(prod.status, 201);
+  const pid = prod.data._id;
+
+  // Compra en coins sin saldo → 402
+  assert.equal((await call('/orders', { method: 'POST', token: ana, body: { currency: 'COINS', items: [{ productId: pid, quantity: 1 }] } })).status, 402);
+
+  // Compra en euros sin saldo → SIN PAGAR
+  const o1 = await call('/orders', { method: 'POST', token: ana, body: { currency: 'EUR', items: [{ productId: pid, quantity: 2 }] } });
+  assert.equal(o1.status, 201);
+  assert.equal(o1.data.status, 'sin_pagar');
+  assert.equal(o1.data.total, 1000);
+  assert.match(o1.data.code, new RegExp(`^${new Date().getFullYear()}-\\d{4}$`));
+
+  // Admin lo marca pagado en tienda → +1000 CC (10 € × 100)
+  const paid = await call(`/admin/orders/${o1.data._id}`, { method: 'PATCH', token: admin, body: { status: 'pagado' } });
+  assert.equal(paid.data.status, 'pagado');
+  assert.equal(paid.data.coinsEarned, 1000);
+  let me = (await call('/auth/me', { token: ana })).data.user;
+  assert.equal(me.balanceCoins, 1000);
+
+  // Compra en coins → PAGADO automáticamente
+  const o2 = await call('/orders', { method: 'POST', token: ana, body: { currency: 'COINS', items: [{ productId: pid, quantity: 1 }] } });
+  assert.equal(o2.data.status, 'pagado');
+  assert.equal(o2.data.coinsEarned, 0);
+  assert.notEqual(o2.data.code, o1.data.code);
+  assert.equal(o2.data.orderNumber, o1.data.orderNumber + 1);
+
+  // Recarga de 20 € y compra en euros con saldo → PAGADO + recompensa
+  await call(`/admin/users/${anaId}/topup`, { method: 'POST', token: admin, body: { currency: 'EUR', amount: 2000 } });
+  const o3 = await call('/orders', { method: 'POST', token: ana, body: { currency: 'EUR', items: [{ productId: pid, quantity: 1 }] } });
+  assert.equal(o3.data.status, 'pagado');
+  assert.equal(o3.data.paidWith, 'saldo_eur');
+  me = (await call('/auth/me', { token: ana })).data.user;
+  assert.equal(me.balanceEurCents, 1500);
+  assert.equal(me.balanceCoins, 1000 - 600 + 500);
+
+  // Cancelar o2 (coins) → devuelve 600 CC y el stock
+  await call(`/admin/orders/${o2.data._id}`, { method: 'PATCH', token: admin, body: { status: 'cancelado' } });
+  me = (await call('/auth/me', { token: ana })).data.user;
+  assert.equal(me.balanceCoins, 1500);
+
+  // Stock: 10 - 2 - 1 - 1 + 1 = 7
+  const list = await call('/admin/products', { token: admin });
+  assert.equal(list.data[0].stock, 7);
+
+  // El admin edita el usuario pero NO la contraseña
+  await call(`/admin/users/${anaId}`, { method: 'PATCH', token: admin, body: { fullName: 'Ana P. Gómez', password: 'hackeada' } });
+  assert.equal((await call('/auth/login', { method: 'POST', body: { identifier: 'ana@test.com', password: '12345678' } })).status, 200);
+
+  // Estadísticas
+  const stats = await call('/admin/stats?period=month', { token: admin });
+  assert.equal(stats.status, 200);
+  const summary = await call('/admin/summary', { token: admin });
+  assert.equal(summary.data.today.eurCents, 1500);
+  for (const period of ['day', 'month', 'year']) {
+    // eslint-disable-next-line no-await-in-loop
+    const ov = await call(`/admin/overview?period=${period}`, { token: admin });
+    assert.equal(ov.status, 200);
+    assert.equal(ov.data.revenueEurCents, 1500);
+    assert.equal(ov.data.series.reduce((s, b) => s + b.eurCents, 0), 1500);
+  }
+
+  // Etiquetas y filtro por etiqueta
+  await call(`/admin/products/${pid}`, { method: 'PATCH', token: admin, body: { tags: ['nuevo', 'oferta'] } });
+  assert.equal((await call('/products?tag=oferta')).data.total, 1);
+  assert.equal((await call('/products?tag=destacado')).data.total, 0);
+
+  // Un usuario normal no entra al panel
+  assert.equal((await call('/admin/summary', { token: ana })).status, 403);
+});
+
+test('código de pedido: pasa a 5 dígitos cuando se agotan las 10.000 combinaciones', async () => {
+  await Order.deleteMany({});
+  const year = new Date().getFullYear();
+  const user = new mongoose.Types.ObjectId();
+  const product = new mongoose.Types.ObjectId();
+  const docs = [];
+  for (let n = 0; n < 10000; n += 1) {
+    docs.push({
+      orderNumber: 100000 + n, code: `${year}-${String(n).padStart(4, '0')}`, user, currency: 'EUR', total: 1,
+      items: [{ product, name: 'x', quantity: 1, unitPrice: 1 }],
+    });
+  }
+  await Order.insertMany(docs);
+
+  const code = await generateOrderCode();
+  assert.match(code, new RegExp(`^${year}-\\d{5}$`));
+});
