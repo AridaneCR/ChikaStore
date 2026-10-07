@@ -31,7 +31,7 @@ export function exportProducts(products) {
     p.active ? 'sí' : 'no',
   ]);
   const date = new Date().toISOString().slice(0, 10);
-  downloadBlob(writeXlsx({ headers: IMPORT_HEADERS, rows, widths: WIDTHS }), `productos-chikastore-${date}.xlsx`);
+  downloadBlob(writeXlsx({ headers: IMPORT_HEADERS, rows, widths: WIDTHS }), `productos-chikakushop-${date}.xlsx`);
 }
 
 export default function ImportProducts({ onClose, onDone }) {

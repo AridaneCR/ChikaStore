@@ -7,10 +7,10 @@ import { formatCoins, formatEur, initials } from '../utils/format';
 
 export function Brand({ sub = 'Cartas · Juegos · Snacks · Y más', dark = false }) {
   return (
-    <a href="#/" className={`brand${dark ? ' brand-dark' : ''}`} aria-label="CHIKASTORE, ir al inicio">
+    <a href="#/" className={`brand${dark ? ' brand-dark' : ''}`} aria-label="ChikakuShop, ir al inicio">
       <LogoMark size={dark ? 34 : 44} />
       <span className="brand-text">
-        <span className="brand-name">CHIKA<span>STORE</span></span>
+        <span className="brand-name">CHIKAKU<span>SHOP</span></span>
         {sub && <span className="brand-sub">{sub}</span>}
       </span>
     </a>

@@ -25,7 +25,7 @@ function createApp() {
   app.use(cors({ origin: origins }));
   app.use(express.json({ limit: '5mb' })); // 5 MB: importaciones de cientos de productos
 
-  app.get('/api/health', (req, res) => res.json({ ok: true, name: 'CHIKASTORE' }));
+  app.get('/api/health', (req, res) => res.json({ ok: true, name: 'ChikakuShop' }));
   app.use('/api/auth', authRoutes);
   app.use('/api/products', productRoutes);
   app.use('/api/orders', orderRoutes);

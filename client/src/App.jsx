@@ -65,7 +65,7 @@ export default function App() {
         </a>
       )}
       <footer className="site-footer">
-        <span>© CHIKASTORE · Reserva online, paga y recoge en la tienda</span>
+        <span>© ChikakuShop · Reserva online, paga y recoge en la tienda</span>
         <span>1 € = 100 CHIKACOINS</span>
       </footer>
       <Toasts />

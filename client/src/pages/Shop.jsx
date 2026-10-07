@@ -78,7 +78,7 @@ export default function Shop() {
       <section className="hero">
         <div className="hero-copy">
           <span className="hero-tag">{SLIDES[slide].tag}</span>
-          <h1 className="display hero-title">CHIKA<span>STORE</span></h1>
+          <h1 className="display hero-title">CHIKAKU<span>SHOP</span></h1>
           <p className="hero-sub">{SLIDES[slide].sub}</p>
           <div className="hero-cats">
             {HERO_CATS.map(([cat, icon, label]) => (
@@ -103,7 +103,7 @@ export default function Shop() {
           <div className="tcg tcg-front">
             <div className="tcg-frame">
               <LogoMark size={96} />
-              <span>CHIKA</span>
+              <span>CHIKAKU</span>
             </div>
           </div>
           <span className="hero-coin"><Coin size={64} label /></span>
@@ -221,7 +221,7 @@ export function AboutCoins() {
       <nav className="crumbs"><a href="#/">Tienda</a><span>/</span>CHIKACOINS</nav>
       <h1 className="page-title">¿Qué son las CHIKACOINS?</h1>
       <div className="card prose">
-        <p><strong>Las CHIKACOINS (CC) son la moneda de CHIKASTORE.</strong> Cada producto tiene un precio en euros y otro en CHIKACOINS.</p>
+        <p><strong>Las CHIKACOINS (CC) son la moneda de ChikakuShop.</strong> Cada producto tiene un precio en euros y otro en CHIKACOINS.</p>
         <ul>
           <li><strong>Cómo se ganan:</strong> por cada euro que pagas en un pedido recibes 100 CC. Se suman cuando el pedido queda pagado.</li>
           <li><strong>Cómo se gastan:</strong> en el carrito elige pagar con CHIKACOINS. Se descuentan de tu saldo y el pedido queda pagado al momento.</li>

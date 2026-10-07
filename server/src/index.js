@@ -15,7 +15,7 @@ async function main() {
   await require('./models/User').syncIndexes();
   await require('./models/Product').syncIndexes(); // índice único del código de barras
 
-  createApp().listen(PORT, () => console.log(`🐉 CHIKASTORE API en http://localhost:${PORT}`));
+  createApp().listen(PORT, () => console.log(`🐉 ChikakuShop API en http://localhost:${PORT}`));
 }
 
 main().catch((err) => {

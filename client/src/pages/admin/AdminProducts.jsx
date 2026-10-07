@@ -31,7 +31,7 @@ function printLabels(products) {
       <div class="price">${esc(formatEur(p.priceEurCents))} · ${esc(formatCoins(p.priceCoins))} CC</div>
       ${barcodeSvg(p.barcode, { height: 50 }) || `<div class="raw">${esc(p.barcode)}</div>`}
     </div>`).join('');
-  win.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Etiquetas CHIKASTORE</title>
+  win.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Etiquetas ChikakuShop</title>
     <style>
       body{font-family:Arial,sans-serif;margin:10mm}
       .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm}

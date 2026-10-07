@@ -1,5 +1,5 @@
 /* ============================================================
-   CHIKASTORE · Sistema visual
+   ChikakuShop · Sistema visual
    Claro, limpio, rojo carmesí + negro, con toques de rol (d20, cartas)
    ============================================================ */
 :root {
@@ -543,8 +543,11 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; accent-
 @media (max-width: 640px) {
   .page { padding: 16px 16px 44px; }
   .header-inner { padding: 10px 16px; gap: 10px 8px; }
-  .brand .logo-mark { width: 36px !important; height: 36px !important; }
-  .brand-name { font-size: 1.2rem; }
+  .brand .logo-mark { width: 32px !important; height: 32px !important; }
+  .brand { gap: 7px; }
+  .brand-name { font-size: 1.05rem; }
+  .header-actions .icon-btn { width: 36px; height: 36px; }
+  .header-actions .avatar { width: 36px; height: 36px; font-size: 0.78rem; }
   .brand-sub { display: none; }
   .header-actions { gap: 0; }
   .user-chip { margin-left: 4px; }

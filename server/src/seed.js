@@ -21,7 +21,7 @@ const DEMO_PRODUCTS = [
   ['Set de dados metálicos', '7 dados', 'Dados', ['nuevo'], 1490, 1490, 15],
   ['Patatas fritas sal marina', 'Bolsa 150 g', 'Snacks', ['nuevo'], 220, 200, 40],
   ['Juego de mesa: Mazmorra exprés', '2-5 jugadores', 'Juegos de mesa', ['nuevo', 'oferta'], 2995, 2800, 4],
-  ['Camiseta CHIKASTORE', 'Talla única', 'Merchandising', ['oferta'], 1500, 1400, 12],
+  ['Camiseta ChikakuShop', 'Talla única', 'Merchandising', ['oferta'], 1500, 1400, 12],
 ];
 
 async function main() {

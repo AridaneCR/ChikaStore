@@ -1,4 +1,4 @@
-# CHIKASTORE 🐉
+# ChikakuShop 🐉
 
 Tienda online de cartas, juegos y snacks con toques de rol (d20, cartas). Los clientes compran en la web y **pagan o recogen en la tienda física**.
 
