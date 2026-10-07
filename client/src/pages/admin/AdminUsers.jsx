@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, qs } from '../../api';
 import Icon, { Coin } from '../../components/Icon';
-import { CodePill, Empty, Spinner, StatusBadge, toast } from '../../components/ui';
+import { CodePill, Empty, Modal, Spinner, StatusBadge, toast } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { eurosToCents, formatCoins, formatDate, formatEur, formatPrice, initials, orderNo } from '../../utils/format';
 
@@ -9,6 +9,7 @@ export default function AdminUsers() {
   const [q, setQ] = useState('');
   const [list, setList] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(() => {
     api(`/admin/users${qs({ q })}`)
@@ -29,8 +30,9 @@ export default function AdminUsers() {
       <div className="admin-head">
         <div>
           <h1 className="page-title">Usuarios</h1>
-          <p className="muted">Edita datos y saldos. La contraseña solo la puede cambiar cada usuario.</p>
+          <p className="muted">Crea clientes, edita sus datos y recarga su saldo.</p>
         </div>
+        <button className="btn btn-primary" onClick={() => setCreating(true)}><Icon name="user" size={16} /> Nuevo usuario</button>
       </div>
 
       <div className="users-layout">
@@ -58,6 +60,17 @@ export default function AdminUsers() {
         </aside>
 
         {selected ? <UserEditor key={selected} id={selected} onSaved={load} /> : <div className="card"><Empty icon="users" title="Elige un usuario" /></div>}
+        {creating && (
+          <NewUserModal
+            onClose={() => setCreating(false)}
+            onCreated={(u) => {
+              setCreating(false);
+              setQ('');
+              setSelected(u.id);
+              load();
+            }}
+          />
+        )}
       </div>
     </>
   );
@@ -73,7 +86,7 @@ function UserEditor({ id, onSaved }) {
   const load = useCallback(() => {
     api(`/admin/users/${id}`).then((d) => {
       setData(d);
-      setF({ fullName: d.user.fullName, dni: d.user.dni, email: d.user.email, role: d.user.role, active: d.user.active });
+      setF({ fullName: d.user.fullName, dni: d.user.dni || '', email: d.user.email, role: d.user.role, active: d.user.active });
     }).catch((e) => toast(e.message, 'bad'));
   }, [id]);
 
@@ -119,7 +132,7 @@ function UserEditor({ id, onSaved }) {
       <form className="card form" onSubmit={save}>
         <label>Nombre completo<input required value={f.fullName} onChange={set('fullName')} /></label>
         <div className="form-2">
-          <label>DNI<input required value={f.dni} onChange={set('dni')} /></label>
+          <label>DNI<input value={f.dni} onChange={set('dni')} placeholder="Opcional" /></label>
           <label>Correo electrónico<input required type="email" value={f.email} onChange={set('email')} /></label>
         </div>
         <div className="form-2">
@@ -179,5 +192,102 @@ function UserEditor({ id, onSaved }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/* ------------------------- Alta de usuario ------------------------- */
+
+const randomPassword = () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const bytes = new Uint32Array(10);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => chars[b % chars.length]).join('');
+};
+
+function NewUserModal({ onClose, onCreated }) {
+  const [f, setF] = useState({ fullName: '', dni: '', email: '', password: randomPassword(), role: 'user', eur: '', coins: '' });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(null);
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      const body = { fullName: f.fullName, dni: f.dni, email: f.email, password: f.password, role: f.role };
+      if (f.eur !== '') body.balanceEurCents = eurosToCents(f.eur);
+      if (f.coins !== '') body.balanceCoins = Math.round(Number(String(f.coins).replace(/\./g, '')));
+      const user = await api('/admin/users', { method: 'POST', body });
+      toast(`Usuario ${user.fullName} creado`);
+      setDone({ user, password: f.password });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(`Usuario: ${done.user.email}\nContraseña: ${done.password}`);
+      toast('Datos de acceso copiados');
+    } catch {
+      toast('No se pudo copiar; apúntalos a mano', 'bad');
+    }
+  };
+
+  if (done) {
+    return (
+      <Modal title="Usuario creado" onClose={() => onCreated(done.user)}>
+        <div className="form">
+          <p>Dale estos datos de acceso a <strong>{done.user.fullName}</strong>. La contraseña no se volverá a mostrar.</p>
+          <div className="meta-grid">
+            <div><small>Usuario</small><strong>{done.user.email}</strong>{done.user.dni && <small>o DNI {done.user.dni}</small>}</div>
+            <div><small>Contraseña</small><strong className="mono">{done.password}</strong></div>
+          </div>
+          <div className="form-actions">
+            <button className="btn btn-light" onClick={copy}>Copiar datos</button>
+            <button className="btn btn-primary" onClick={() => onCreated(done.user)}>Hecho</button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal title="Nuevo usuario" subtitle="Crea la cuenta de un cliente desde la tienda." onClose={onClose}>
+      <form className="form" onSubmit={submit}>
+        <label>Nombre completo<input required value={f.fullName} onChange={set('fullName')} autoComplete="off" /></label>
+        <div className="form-2">
+          <label>DNI / NIE<input value={f.dni} onChange={set('dni')} placeholder="Opcional · 12345678Z" autoComplete="off" /></label>
+          <label>Correo electrónico<input required type="email" value={f.email} onChange={set('email')} autoComplete="off" /></label>
+        </div>
+        <div className="form-2">
+          <label>Contraseña inicial
+            <span className="input-with-btn">
+              <input required minLength={8} value={f.password} onChange={set('password')} autoComplete="new-password" className="mono" />
+              <button type="button" className="btn btn-light btn-sm" onClick={() => setF({ ...f, password: randomPassword() })}>Generar</button>
+            </span>
+          </label>
+          <label>Rol
+            <select value={f.role} onChange={set('role')}>
+              <option value="user">Usuario</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </label>
+        </div>
+        <div className="form-2">
+          <label>Saldo inicial en €<input inputMode="decimal" value={f.eur} onChange={set('eur')} placeholder="Opcional · 0,00" /></label>
+          <label>CHIKACOINS iniciales<input inputMode="numeric" value={f.coins} onChange={set('coins')} placeholder="Opcional · 0" /></label>
+        </div>
+        {error && <div className="alert">{error}</div>}
+        <div className="form-actions">
+          <button type="button" className="btn btn-light" onClick={onClose}>Cancelar</button>
+          <button className="btn btn-primary" disabled={busy}>{busy ? 'Creando…' : 'Crear usuario'}</button>
+        </div>
+      </form>
+    </Modal>
   );
 }

@@ -4,12 +4,12 @@ const { isValidDni, normalizeDni } = require('../utils/dni');
 const userSchema = new mongoose.Schema(
   {
     fullName: { type: String, required: true, trim: true, maxlength: 120 },
+    // DNI/NIE opcional. Si se rellena, se valida la letra y no puede repetirse.
     dni: {
       type: String,
-      required: true,
-      unique: true,
-      set: normalizeDni,
-      validate: { validator: isValidDni, message: 'DNI/NIE no válido' },
+      default: undefined,
+      set: (v) => normalizeDni(v) || undefined,
+      validate: { validator: (v) => v == null || isValidDni(v), message: 'DNI/NIE no válido' },
     },
     email: {
       type: String,
@@ -28,11 +28,14 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Único solo entre los usuarios que tienen DNI (los que no lo tienen no chocan entre sí)
+userSchema.index({ dni: 1 }, { unique: true, partialFilterExpression: { dni: { $type: 'string' } } });
+
 userSchema.methods.toPublic = function toPublic() {
   return {
     id: this._id,
     fullName: this.fullName,
-    dni: this.dni,
+    dni: this.dni || null,
     email: this.email,
     role: this.role,
     balanceEurCents: this.balanceEurCents,

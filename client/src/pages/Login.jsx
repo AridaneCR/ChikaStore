@@ -66,7 +66,7 @@ export default function Login({ mode = 'login' }) {
             {isRegister ? (
               <>
                 <label>Nombre completo<input required value={form.fullName} onChange={set('fullName')} autoComplete="name" placeholder="Nombre y apellidos" /></label>
-                <label>DNI / NIE<input required value={form.dni} onChange={set('dni')} placeholder="12345678Z" /></label>
+                <label>DNI / NIE<input value={form.dni} onChange={set('dni')} placeholder="Opcional · 12345678Z" /></label>
                 <label>Correo electrónico<input required type="email" value={form.email} onChange={set('email')} autoComplete="email" placeholder="tu@correo.com" /></label>
               </>
             ) : (

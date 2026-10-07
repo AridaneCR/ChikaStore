@@ -77,7 +77,7 @@ Las rutas usan `#/` (hash), así que el sitio estático funciona sin configurar 
 | GET | `/api/orders/mine` · `/api/orders/mine/movements` | usuario |
 | GET/POST/PATCH/DELETE | `/api/admin/products` | admin |
 | GET/PATCH | `/api/admin/orders` (`status`, `items`, `adminNote`) | admin |
-| GET/PATCH | `/api/admin/users` (todo menos la contraseña) | admin |
+| GET/POST/PATCH | `/api/admin/users` (alta con contraseña inicial; al editar, todo menos la contraseña) | admin |
 | POST | `/api/admin/users/:id/topup` `{ currency, amount, note }` | admin |
 | GET | `/api/admin/overview?period=day\|month\|year` (tarjetas + gráfico del panel) · `/api/admin/stats` · `/api/admin/summary` | admin |
 | POST | `/api/admin/upload` (imagen → Cloudinary) | admin |

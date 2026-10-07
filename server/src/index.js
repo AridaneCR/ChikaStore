@@ -11,6 +11,9 @@ async function main() {
   await mongoose.connect(process.env.MONGODB_URI);
   console.log('🗄️  Conectado a MongoDB');
 
+  // Pone al día los índices de usuarios (p. ej. el DNI pasó a ser opcional: único solo si existe)
+  await require('./models/User').syncIndexes();
+
   createApp().listen(PORT, () => console.log(`🐉 CHIKASTORE API en http://localhost:${PORT}`));
 }
 

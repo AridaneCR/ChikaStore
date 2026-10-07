@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const multer = require('multer');
+const bcrypt = require('bcryptjs');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
@@ -181,6 +182,41 @@ router.get('/users/:id', async (req, res) => {
     Movement.find({ user: user._id }).sort({ createdAt: -1 }).limit(50).lean(),
   ]);
   res.json({ user: user.toPublic(), orders, movements });
+});
+
+// Crear usuario desde el panel: { fullName, dni?, email, password, role?, balanceEurCents?, balanceCoins? }
+// El admin pone la contraseña inicial; después solo la cambia el propio usuario.
+router.post('/users', async (req, res) => {
+  const { fullName, dni, email, password, role = 'user', note } = req.body || {};
+  if (!fullName || !email || !password) {
+    throw new HttpError(400, 'Nombre completo, correo y contraseña son obligatorios');
+  }
+  if (String(password).length < 8) throw new HttpError(400, 'La contraseña debe tener al menos 8 caracteres');
+  if (!['user', 'admin'].includes(role)) throw new HttpError(400, 'Rol no válido');
+
+  const balances = {};
+  for (const field of ['balanceEurCents', 'balanceCoins']) {
+    const v = intOrUndef(req.body[field]);
+    if (v === undefined) continue;
+    if (!Number.isInteger(v) || v < 0) throw new HttpError(400, 'El saldo inicial debe ser un entero ≥ 0');
+    balances[field] = v;
+  }
+
+  const user = await User.create({
+    fullName,
+    dni: dni || undefined,
+    email,
+    role,
+    password: await bcrypt.hash(String(password), 10),
+    ...balances,
+  });
+
+  const movements = [];
+  if (balances.balanceEurCents) movements.push({ user: user._id, currency: 'EUR', amount: balances.balanceEurCents, type: 'recarga', by: req.user._id, note: note || 'Saldo inicial' });
+  if (balances.balanceCoins) movements.push({ user: user._id, currency: 'COINS', amount: balances.balanceCoins, type: 'ajuste', by: req.user._id, note: note || 'Saldo inicial' });
+  if (movements.length) await Movement.insertMany(movements);
+
+  res.status(201).json(user.toPublic());
 });
 
 // Edita cualquier dato del usuario MENOS la contraseña

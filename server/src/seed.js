@@ -25,6 +25,7 @@ const DEMO_PRODUCTS = [
 
 async function main() {
   await mongoose.connect(process.env.MONGODB_URI);
+  await User.syncIndexes(); // el DNI es opcional: índice único solo para quien lo tenga
 
   const email = (process.env.ADMIN_EMAIL || '').toLowerCase();
   if (!email || !process.env.ADMIN_PASSWORD) throw new Error('Define ADMIN_EMAIL y ADMIN_PASSWORD en el .env');
@@ -36,7 +37,7 @@ async function main() {
       $set: { role: 'admin', password, active: true },
       $setOnInsert: {
         fullName: process.env.ADMIN_NAME || 'Administrador',
-        dni: process.env.ADMIN_DNI || '00000000T',
+        ...(process.env.ADMIN_DNI ? { dni: process.env.ADMIN_DNI } : {}),
         email,
       },
     },

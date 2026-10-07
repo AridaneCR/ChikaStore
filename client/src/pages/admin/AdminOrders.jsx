@@ -132,7 +132,7 @@ function OrderEditor({ order, onClose, onSaved }) {
     <Modal title={`Pedido ${orderNo(order.orderNumber)}`} subtitle={formatDateTime(order.createdAt)} onClose={onClose} wide>
       <div className="meta-grid">
         <div><small>Código</small><CodePill code={order.code} /></div>
-        <div><small>Cliente</small><strong>{order.user?.fullName}</strong><small>{order.user?.dni} · {order.user?.email}</small></div>
+        <div><small>Cliente</small><strong>{order.user?.fullName}</strong><small>{[order.user?.dni, order.user?.email].filter(Boolean).join(' · ')}</small></div>
         <div><small>Estado</small><StatusBadge status={order.status} /></div>
         <div><small>Pago</small><strong>{order.paidWith ? PAID_WITH[order.paidWith] : '—'}</strong><small>{order.paidAt ? formatDateTime(order.paidAt) : ''}</small></div>
       </div>

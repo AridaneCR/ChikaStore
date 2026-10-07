@@ -12,13 +12,13 @@ const limiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders
 
 router.post('/register', limiter, async (req, res) => {
   const { fullName, dni, email, password } = req.body || {};
-  if (!fullName || !dni || !email || !password) {
-    throw new HttpError(400, 'Nombre completo, DNI, correo y contraseña son obligatorios');
+  if (!fullName || !email || !password) {
+    throw new HttpError(400, 'Nombre completo, correo y contraseña son obligatorios');
   }
   if (String(password).length < 8) throw new HttpError(400, 'La contraseña debe tener al menos 8 caracteres');
 
   const hash = await bcrypt.hash(String(password), 10);
-  const user = await User.create({ fullName, dni, email, password: hash });
+  const user = await User.create({ fullName, dni: dni || undefined, email, password: hash });
   res.status(201).json({ token: signToken(user), user: user.toPublic() });
 });
 

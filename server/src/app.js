@@ -10,7 +10,17 @@ const adminRoutes = require('./routes/admin');
 function createApp() {
   const app = express();
 
-  const origins = (process.env.CLIENT_URL || 'http://localhost:5173').split(',').map((s) => s.trim());
+  // En Render (y casi cualquier hosting) la app va detrás de un proxy: así Express ve la IP
+  // real del cliente y el límite de intentos de login no se comparte entre todos los usuarios.
+  app.set('trust proxy', Number(process.env.TRUST_PROXY ?? 1));
+
+  // Orígenes permitidos (CLIENT_URL, separados por comas). Se ignoran espacios y la "/" final,
+  // porque el navegador envía el origen sin barra: "https://chikastore.onrender.com".
+  const origins = (process.env.CLIENT_URL || 'http://localhost:5173')
+    .split(',')
+    .map((s) => s.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+  if (process.env.NODE_ENV !== 'test') console.log('🌐 CORS permitido para:', origins.join(', '));
   app.use(helmet());
   app.use(cors({ origin: origins }));
   app.use(express.json({ limit: '1mb' }));
