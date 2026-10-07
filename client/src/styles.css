@@ -463,6 +463,33 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; accent-
 .balance-row { display: flex; gap: 40px; flex-wrap: wrap; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
 .balance-row > div { display: grid; gap: 2px; }
 
+
+/* ---------- Escáner de códigos de barras ---------- */
+.scanner { position: relative; width: 100%; aspect-ratio: 4 / 3; max-height: 62vh; background: #000; border-radius: var(--radius); overflow: hidden; }
+.scanner-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scanner-frame { position: absolute; left: 10%; right: 10%; top: 30%; bottom: 30%; border: 3px solid rgba(255, 255, 255, 0.9); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35); pointer-events: none; }
+.scanner-line { position: absolute; left: 6%; right: 6%; top: 50%; height: 2px; background: var(--red-400); box-shadow: 0 0 10px var(--red-400); animation: scanline 1.8s ease-in-out infinite; }
+@keyframes scanline { 0%, 100% { top: 15%; } 50% { top: 85%; } }
+.scanner-msg { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; color: #fff; text-align: center; padding: 24px; font-weight: 600; }
+.scanner-error { background: #1b1b1b; }
+.scanner-busy { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.15); }
+.scan-help { margin: -6px 0 14px; }
+.scan-result { display: flex; align-items: center; gap: 14px; padding: 14px; margin-top: 14px; box-shadow: none; border-color: #bfe5cb; background: #f3fbf5; }
+.scan-miss { border-color: #f5c2c7; background: #fff5f6; }
+.scan-result-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; flex: none; }
+.scan-result-icon.bad { background: var(--bad-bg); color: var(--bad); }
+.scan-thumb { position: relative; width: 56px; height: 56px; border-radius: 10px; background: #f0f0f0; overflow: hidden; flex: none; }
+.scan-info { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.scan-info small { color: var(--muted); display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.scan-manual { display: flex; gap: 10px; margin-top: 14px; }
+.scan-manual .search-box { max-width: none; }
+.scan-fab { display: none; }
+.barcode-field { display: grid; gap: 8px; }
+.barcode-preview svg { max-width: 260px; height: auto; display: block; }
+.barcode-text { font-family: ui-monospace, Consolas, monospace; }
+.field-error { color: var(--bad); font-weight: 600; }
+.row-actions.end { justify-content: flex-end; }
+
 /* ---------- Accesibilidad ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -479,7 +506,7 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; accent-
 }
 @media (max-width: 980px) {
   .header-inner { flex-wrap: wrap; gap: 10px 16px; }
-  .search-box { order: 3; flex-basis: 100%; max-width: none; }
+  .header-inner .search-box { order: 3; flex-basis: 100%; max-width: none; }
   .main-nav { order: 4; flex-basis: 100%; margin-left: 0; overflow-x: auto; padding-bottom: 2px; }
   .header-actions { margin-left: auto; }
   .hero { grid-template-columns: 1fr; padding: 32px 26px 44px; }
@@ -525,5 +552,8 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; accent-
   .cart-line-total { grid-area: total; }
   .stat-value { font-size: 1.45rem; }
   .auth-sigil { display: none; }
-  .toasts { left: 16px; right: 16px; }
+  .toasts { left: 16px; right: 16px; bottom: 84px; }
+  .scan-fab { display: grid; place-items: center; position: fixed; right: 16px; bottom: 18px; z-index: 35; width: 58px; height: 58px; border-radius: 50%; background: var(--red); color: #fff; box-shadow: 0 10px 24px rgba(200, 16, 46, 0.4); }
+  .scanner { aspect-ratio: 3 / 4; }
+  .scan-result { flex-wrap: wrap; }
 }

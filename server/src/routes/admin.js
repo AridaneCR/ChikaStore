@@ -9,6 +9,7 @@ const Movement = require('../models/Movement');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { changeStatus, updateItems } = require('../services/orderService');
 const { HttpError } = require('../utils/money');
+const { randomInternalEan13 } = require('../utils/barcode');
 
 const router = express.Router();
 router.use(requireAuth, requireAdmin);
@@ -29,6 +30,8 @@ function productPayload(body) {
   for (const k of ['name', 'description', 'category', 'imageUrl', 'active']) {
     if (body[k] !== undefined) data[k] = body[k];
   }
+  // Código de barras: '' o null lo quita
+  if (body.barcode !== undefined) data.barcode = body.barcode === '' || body.barcode === null ? undefined : body.barcode;
   if (body.tags !== undefined) {
     if (!Array.isArray(body.tags) || body.tags.some((t) => !Product.TAGS.includes(t))) {
       throw new HttpError(400, 'Etiquetas no válidas');
@@ -56,7 +59,10 @@ function productPayload(body) {
 router.get('/products', async (req, res) => {
   const { q, category, active } = req.query;
   const filter = {};
-  if (q) filter.name = { $regex: escapeRegex(q), $options: 'i' };
+  if (q) {
+    const term = String(q).trim();
+    filter.$or = [{ name: { $regex: escapeRegex(term), $options: 'i' } }, { barcode: term.toUpperCase() }];
+  }
   if (category) filter.category = category;
   if (active === 'true' || active === 'false') filter.active = active === 'true';
   res.json(await Product.find(filter).sort({ name: 1 }).lean());
@@ -67,8 +73,40 @@ router.post('/products', async (req, res) => {
   res.status(201).json(product);
 });
 
+// Genera un EAN-13 interno que no use ningún otro producto
+async function freeInternalBarcode() {
+  for (let i = 0; i < 20; i += 1) {
+    const code = randomInternalEan13();
+    // eslint-disable-next-line no-await-in-loop
+    if (!(await Product.exists({ barcode: code }))) return code;
+  }
+  throw new HttpError(503, 'No se pudo generar un código, inténtalo de nuevo');
+}
+
+router.post('/products/barcode/generate', async (req, res) => {
+  res.json({ barcode: await freeInternalBarcode() });
+});
+
+// Asigna un código interno a todos los productos que no tengan
+router.post('/products/barcode/fill', async (req, res) => {
+  const missing = await Product.find({ barcode: { $exists: false } }, { _id: 1 }).lean();
+  let filled = 0;
+  for (const p of missing) {
+    // eslint-disable-next-line no-await-in-loop
+    await Product.updateOne({ _id: p._id, barcode: { $exists: false } }, { $set: { barcode: await freeInternalBarcode() } });
+    filled += 1;
+  }
+  res.json({ filled });
+});
+
 router.patch('/products/:id', async (req, res) => {
-  const product = await Product.findByIdAndUpdate(req.params.id, productPayload(req.body || {}), {
+  const payload = productPayload(req.body || {});
+  const update = { ...payload };
+  if ('barcode' in payload && payload.barcode === undefined) {
+    delete update.barcode;
+    update.$unset = { barcode: 1 };
+  }
+  const product = await Product.findByIdAndUpdate(req.params.id, update, {
     new: true,
     runValidators: true,
   });

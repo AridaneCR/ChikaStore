@@ -13,6 +13,7 @@ async function main() {
 
   // Pone al día los índices de usuarios (p. ej. el DNI pasó a ser opcional: único solo si existe)
   await require('./models/User').syncIndexes();
+  await require('./models/Product').syncIndexes(); // índice único del código de barras
 
   createApp().listen(PORT, () => console.log(`🐉 CHIKASTORE API en http://localhost:${PORT}`));
 }

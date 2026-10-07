@@ -19,6 +19,8 @@ Tienda online de cartas, juegos y snacks con toques de rol (d20, cartas). Los cl
 | Recompensa | 1 € = 100 CHIKACOINS. Se dan al **pagar** un pedido en euros, no al hacerlo. Las compras con CHIKACOINS no generan CHIKACOINS. |
 | Nº de pedido | Secuencial y único (1, 2, 3…). |
 | Código de pedido | `AÑO-XXXX` con 4 dígitos aleatorios (ej. `2026-0427`), único. Si se usan las 10.000 combinaciones del año, pasa a 5 dígitos (`2026-04271`). |
+| Código de barras | Cada producto puede tener su EAN del fabricante o un EAN-13 interno que genera la tienda (empieza por 2). El admin puede leerlo con la cámara, generar los que falten e imprimir etiquetas. |
+| Escanear | En el móvil, **Escanear** abre la cámara: cada código leído busca el producto y lo añade al carrito. Usa el lector del navegador (Chrome/Android) o ZXing (iPhone). Necesita HTTPS. |
 | Cancelar | Devuelve el stock. Si el pedido estaba pagado, devuelve el importe al saldo del cliente y le quita las CHIKACOINS que ganó. |
 
 Todo el dinero se guarda en **céntimos** (enteros) para evitar errores de redondeo.
@@ -72,7 +74,8 @@ Las rutas usan `#/` (hash), así que el sitio estático funciona sin configurar 
 |---|---|---|
 | POST | `/api/auth/register` · `/api/auth/login` | público |
 | GET | `/api/auth/me` | usuario |
-| GET | `/api/products` (`q`, `category`, `tag`, `sort`, `page`) · `/api/products/categories` | público |
+| GET | `/api/products` (`q`, `category`, `tag`, `sort`, `page`) · `/api/products/categories` · `/api/products/barcode/:code` | público |
+| POST | `/api/admin/products/barcode/generate` · `/api/admin/products/barcode/fill` | admin |
 | POST | `/api/orders` `{ currency: 'EUR'\|'COINS', items: [{ productId, quantity }] }` | usuario |
 | GET | `/api/orders/mine` · `/api/orders/mine/movements` | usuario |
 | GET/POST/PATCH/DELETE | `/api/admin/products` | admin |

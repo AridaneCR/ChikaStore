@@ -1,5 +1,6 @@
 const express = require('express');
 const Product = require('../models/Product');
+const { barcodeVariants } = require('../utils/barcode');
 
 const router = express.Router();
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -35,6 +36,14 @@ router.get('/', async (req, res) => {
 
 router.get('/categories', (req, res) => {
   res.json(Product.CATEGORIES);
+});
+
+// Buscar un producto por su código de barras (lo usa el escáner del móvil)
+router.get('/barcode/:code', async (req, res) => {
+  const variants = barcodeVariants(req.params.code);
+  const product = variants.length ? await Product.findOne({ barcode: { $in: variants }, active: true }).lean() : null;
+  if (!product) return res.status(404).json({ error: 'No hay ningún producto con ese código' });
+  return res.json(product);
 });
 
 router.get('/:id', async (req, res) => {

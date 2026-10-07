@@ -23,6 +23,10 @@ const PATHS = {
   close: <path d="M6 6l12 12M18 6 6 18" />,
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  barcode: <><path d="M3 7V4.5A1.5 1.5 0 0 1 4.5 3H7M17 3h2.5A1.5 1.5 0 0 1 21 4.5V7M21 17v2.5a1.5 1.5 0 0 1-1.5 1.5H17M7 21H4.5A1.5 1.5 0 0 1 3 19.5V17" /><path d="M7 8v8M10 8v8M13 8v8M15.5 8v8M17.5 8v8" /></>,
+  camera: <><path d="M4 7.5h3l1.6-2.5h6.8L17 7.5h3a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8.5a1 1 0 0 1 1-1Z" /><circle cx="12" cy="13.5" r="3.6" /></>,
+  printer: <><path d="M7 9V3.5h10V9" /><rect x="3.5" y="9" width="17" height="7.5" rx="1.5" /><path d="M7 14h10v6.5H7Z" /></>,
+  keyboard: <><rect x="2.5" y="6" width="19" height="12" rx="2" /><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M7 14h10" /></>,
   // Categorías
   sobre: <path d="M7 3h10l-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1 2-1 2H7l1-2-1-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2Z" />,
   funda: <><rect x="6" y="3" width="12" height="18" rx="1" /><path d="M9.5 3v18" /></>,

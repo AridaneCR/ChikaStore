@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { normalizeBarcode, isValidBarcode } = require('../utils/barcode');
 
 const CATEGORIES = [
   'Sobres',
@@ -21,6 +22,13 @@ const productSchema = new mongoose.Schema(
     category: { type: String, enum: CATEGORIES, default: 'Otros' },
     tags: { type: [{ type: String, enum: TAGS }], default: [] },
     imageUrl: { type: String, default: '' },
+    // Código de barras (EAN-13 del fabricante o uno interno generado por la tienda). Opcional y único.
+    barcode: {
+      type: String,
+      default: undefined,
+      set: normalizeBarcode,
+      validate: { validator: (v) => v == null || isValidBarcode(v), message: 'Código de barras no válido' },
+    },
     // Los dos precios los elige el admin de forma independiente
     priceEurCents: { type: Number, required: true, min: 0 },
     priceCoins: { type: Number, required: true, min: 0 },
@@ -33,6 +41,7 @@ const productSchema = new mongoose.Schema(
 
 productSchema.index({ active: 1, category: 1 });
 productSchema.index({ active: 1, tags: 1 });
+productSchema.index({ barcode: 1 }, { unique: true, partialFilterExpression: { barcode: { $type: 'string' } } });
 
 module.exports = mongoose.model('Product', productSchema);
 module.exports.CATEGORIES = CATEGORIES;

@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('./models/User');
 const Product = require('./models/Product');
+const { randomInternalEan13 } = require('./utils/barcode');
 
 const DEMO_PRODUCTS = [
   // nombre, descripción corta, categoría, etiquetas, € (céntimos), CHIKACOINS, stock
@@ -26,6 +27,7 @@ const DEMO_PRODUCTS = [
 async function main() {
   await mongoose.connect(process.env.MONGODB_URI);
   await User.syncIndexes(); // el DNI es opcional: índice único solo para quien lo tenga
+  await Product.syncIndexes(); // código de barras único
 
   const email = (process.env.ADMIN_EMAIL || '').toLowerCase();
   if (!email || !process.env.ADMIN_PASSWORD) throw new Error('Define ADMIN_EMAIL y ADMIN_PASSWORD en el .env');
@@ -50,7 +52,7 @@ async function main() {
       // eslint-disable-next-line no-await-in-loop
       await Product.updateOne(
         { name },
-        { $setOnInsert: { name, description, category, tags, priceEurCents, priceCoins, stock } },
+        { $setOnInsert: { name, description, category, tags, priceEurCents, priceCoins, stock, barcode: randomInternalEan13() } },
         { upsert: true }
       );
     }

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import Icon from './components/Icon';
 import Navbar from './components/Navbar';
 import { Spinner, Toasts } from './components/ui';
 import { useAuth } from './context/AuthContext';
@@ -7,6 +8,7 @@ import Cart from './pages/Cart';
 import Login from './pages/Login';
 import Orders from './pages/Orders';
 import Profile from './pages/Profile';
+import Scan from './pages/Scan';
 import Shop, { AboutCoins, Catalog, Categories, Favorites } from './pages/Shop';
 import { navigate, useRoute } from './router';
 
@@ -15,6 +17,7 @@ const ROUTES = {
   '/productos': Catalog,
   '/categorias': Categories,
   '/favoritos': Favorites,
+  '/escanear': Scan,
   '/chikacoins': AboutCoins,
   '/carrito': Cart,
   '/pedidos': Orders,
@@ -56,6 +59,11 @@ export default function App() {
     <>
       <Navbar route={route} />
       <main><Page query={route.query} /></main>
+      {path !== '/escanear' && path !== '/carrito' && (
+        <a href="#/escanear" className="scan-fab" aria-label="Escanear código de barras">
+          <Icon name="barcode" size={24} />
+        </a>
+      )}
       <footer className="site-footer">
         <span>© CHIKASTORE · Reserva online, paga y recoge en la tienda</span>
         <span>1 € = 100 CHIKACOINS</span>

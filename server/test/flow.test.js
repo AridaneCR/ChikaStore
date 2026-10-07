@@ -127,6 +127,27 @@ test('flujo completo: registro, compra en coins y en euros, pago en tienda, canc
     assert.equal(ov.data.series.reduce((s, b) => s + b.eurCents, 0), 1500);
   }
 
+  // Códigos de barras
+  assert.equal((await call(`/admin/products/${pid}`, { method: 'PATCH', token: admin, body: { barcode: '8410076472862' } })).status, 400); // dígito de control mal
+  assert.equal((await call(`/admin/products/${pid}`, { method: 'PATCH', token: admin, body: { barcode: '036000291452' } })).data.barcode, '036000291452');
+  let scanned = await call('/products/barcode/0036000291452'); // el mismo UPC-A leído como EAN-13
+  assert.equal(scanned.status, 200);
+  assert.equal(scanned.data._id, pid);
+  assert.equal((await call('/products/barcode/9999999999994')).status, 404);
+  const p2 = await call('/admin/products', { method: 'POST', token: admin, body: { name: 'Dados', priceEurCents: 100, priceCoins: 100, barcode: '036000291452' } });
+  assert.equal(p2.status, 409); // código repetido
+  const p3 = await call('/admin/products', { method: 'POST', token: admin, body: { name: 'Dados', priceEurCents: 100, priceCoins: 100 } });
+  assert.equal(p3.status, 201);
+  const gen = await call('/admin/products/barcode/generate', { method: 'POST', token: admin });
+  assert.match(gen.data.barcode, /^2\d{12}$/);
+  const fill = await call('/admin/products/barcode/fill', { method: 'POST', token: admin });
+  assert.equal(fill.data.filled, 1);
+  scanned = await call(`/products/barcode/${(await call('/admin/products?q=Dados', { token: admin })).data[0].barcode}`);
+  assert.equal(scanned.data.name, 'Dados');
+  // Quitar el código
+  assert.equal((await call(`/admin/products/${pid}`, { method: 'PATCH', token: admin, body: { barcode: '' } })).data.barcode, undefined);
+  await call(`/admin/products/${p3.data._id}`, { method: 'DELETE', token: admin });
+
   // Etiquetas y filtro por etiqueta
   await call(`/admin/products/${pid}`, { method: 'PATCH', token: admin, body: { tags: ['nuevo', 'oferta'] } });
   assert.equal((await call('/products?tag=oferta')).data.total, 1);
