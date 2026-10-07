@@ -148,6 +148,29 @@ test('flujo completo: registro, compra en coins y en euros, pago en tienda, canc
   assert.equal((await call(`/admin/products/${pid}`, { method: 'PATCH', token: admin, body: { barcode: '' } })).data.barcode, undefined);
   await call(`/admin/products/${p3.data._id}`, { method: 'DELETE', token: admin });
 
+  // Importación masiva (Excel): vista previa y luego guardar
+  const rows = [
+    { 'Nombre *': 'EJEMPLO – Sobre de cartas', 'Precio € *': '5' },
+    { 'Nombre *': 'Bolígrafo rúnico', 'Categoría': 'merchandising', 'Precio € *': '2,50', 'Stock': '10', 'Código de barras': '5901234123457', 'Etiquetas': 'nuevo' },
+    { 'Nombre *': 'Poción', 'Precio € *': '6', 'Precio CC': '550' }, // ya existe → actualizar
+    { 'Nombre *': 'Mal', 'Precio € *': 'gratis' },
+  ];
+  const preview = await call('/admin/products/import', { method: 'POST', token: admin, body: { rows } });
+  assert.equal(preview.status, 200);
+  assert.deepEqual(preview.data.summary, { create: 1, update: 1, error: 1, skip: 1 });
+  assert.equal((await call('/products/barcode/5901234123457')).status, 404); // la vista previa no guarda
+  const imported = await call('/admin/products/import', { method: 'POST', token: admin, body: { rows, dryRun: false } });
+  assert.equal(imported.data.summary.create, 1);
+  assert.equal(imported.data.summary.update, 1);
+  const boli = await call('/products/barcode/5901234123457');
+  assert.equal(boli.data.priceEurCents, 250);
+  assert.equal(boli.data.priceCoins, 250); // sin precio CC → € × 100
+  assert.equal(boli.data.category, 'Merchandising');
+  const pocion = (await call('/admin/products?q=Poción', { token: admin })).data[0];
+  assert.equal(pocion.priceEurCents, 600);
+  assert.equal(pocion.priceCoins, 550);
+  assert.equal((await call('/admin/products/import', { method: 'POST', token: admin, body: { rows: [{ Foo: 1 }] } })).status, 400);
+
   // Etiquetas y filtro por etiqueta
   await call(`/admin/products/${pid}`, { method: 'PATCH', token: admin, body: { tags: ['nuevo', 'oferta'] } });
   assert.equal((await call('/products?tag=oferta')).data.total, 1);

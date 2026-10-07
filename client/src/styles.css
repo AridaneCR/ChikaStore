@@ -490,6 +490,20 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; accent-
 .field-error { color: var(--bad); font-weight: 600; }
 .row-actions.end { justify-content: flex-end; }
 
+
+/* ---------- Importar productos ---------- */
+.import-steps { margin: 0 0 16px; padding-left: 20px; display: grid; gap: 6px; }
+.dropzone-lg { min-height: 120px; font-size: 1rem; }
+.import-file { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.import-file .link-btn { margin-left: auto; }
+.import-summary { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.badge-info { background: #dbeafe; color: #1e40af; }
+.check-inline-sm { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; font-size: 0.85rem; color: var(--ink-2); cursor: pointer; }
+.import-table { max-height: 50vh; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.import-table th { position: sticky; top: 0; z-index: 1; }
+.import-notes { font-size: 0.8rem; min-width: 180px; }
+.row-error td { background: #fff7f7; }
+
 /* ---------- Accesibilidad ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

@@ -21,6 +21,7 @@ Tienda online de cartas, juegos y snacks con toques de rol (d20, cartas). Los cl
 | Código de pedido | `AÑO-XXXX` con 4 dígitos aleatorios (ej. `2026-0427`), único. Si se usan las 10.000 combinaciones del año, pasa a 5 dígitos (`2026-04271`). |
 | Código de barras | Cada producto puede tener su EAN del fabricante o un EAN-13 interno que genera la tienda (empieza por 2). El admin puede leerlo con la cámara, generar los que falten e imprimir etiquetas. |
 | Escanear | En el móvil, **Escanear** abre la cámara: cada código leído busca el producto y lo añade al carrito. Usa el lector del navegador (Chrome/Android) o ZXing (iPhone). Necesita HTTPS. |
+| Importar / exportar | En **Productos → Importar Excel** se sube un `.xlsx` o `.csv` (plantilla en `client/public/plantilla-productos.xlsx`). Primero se ve una vista previa fila a fila; luego crea o actualiza (por código de barras o por nombre). **Exportar Excel** descarga todos los productos con las mismas columnas para editarlos y volver a importarlos. |
 | Cancelar | Devuelve el stock. Si el pedido estaba pagado, devuelve el importe al saldo del cliente y le quita las CHIKACOINS que ganó. |
 
 Todo el dinero se guarda en **céntimos** (enteros) para evitar errores de redondeo.
@@ -76,6 +77,7 @@ Las rutas usan `#/` (hash), así que el sitio estático funciona sin configurar 
 | GET | `/api/auth/me` | usuario |
 | GET | `/api/products` (`q`, `category`, `tag`, `sort`, `page`) · `/api/products/categories` · `/api/products/barcode/:code` | público |
 | POST | `/api/admin/products/barcode/generate` · `/api/admin/products/barcode/fill` | admin |
+| POST | `/api/admin/products/import` `{ rows, dryRun }` (vista previa con `dryRun: true`) | admin |
 | POST | `/api/orders` `{ currency: 'EUR'\|'COINS', items: [{ productId, quantity }] }` | usuario |
 | GET | `/api/orders/mine` · `/api/orders/mine/movements` | usuario |
 | GET/POST/PATCH/DELETE | `/api/admin/products` | admin |

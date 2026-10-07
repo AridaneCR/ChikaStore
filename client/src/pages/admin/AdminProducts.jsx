@@ -4,6 +4,7 @@ import Icon from '../../components/Icon';
 import Barcode from '../../components/Barcode';
 import ProductCard from '../../components/ProductCard';
 import Scanner from '../../components/Scanner';
+import ImportProducts, { exportProducts } from './ImportProducts';
 import { Modal, Spinner, toast } from '../../components/ui';
 import { barcodeSvg, isValidBarcode } from '../../utils/barcode';
 import { CATEGORIES, centsToEuros, eurosToCents, formatCoins, formatEur, TAGS } from '../../utils/format';
@@ -63,6 +64,7 @@ export default function AdminProducts() {
   const [busy, setBusy] = useState(false);
   const [showUrl, setShowUrl] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [importing, setImporting] = useState(false);
   const formRef = useRef(null);
 
   const load = useCallback(() => {
@@ -238,6 +240,8 @@ export default function AdminProducts() {
       <div className="section-head">
         <h2>Productos {list && <small className="muted">({list.length})</small>}</h2>
         <div className="head-tools">
+          <button className="btn btn-dark btn-sm" onClick={() => setImporting(true)}><Icon name="upload" size={16} /> Importar Excel</button>
+          <button className="btn btn-light btn-sm" onClick={() => list && exportProducts(list)}>Exportar Excel</button>
           <button className="btn btn-light btn-sm" onClick={fillBarcodes}><Icon name="barcode" size={16} /> Generar códigos que faltan</button>
           <button className="btn btn-light btn-sm" onClick={() => list && printLabels(list.filter((p) => p.active))}><Icon name="printer" size={16} /> Imprimir etiquetas</button>
           <label className="search-box small">
@@ -275,6 +279,8 @@ export default function AdminProducts() {
           </div>
         </div>
       )}
+
+      {importing && <ImportProducts onClose={() => setImporting(false)} onDone={load} />}
 
       {scanning && (
         <Modal title="Escanear código de barras" subtitle="Apunta la cámara al código del producto." onClose={() => setScanning(false)}>

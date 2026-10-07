@@ -10,6 +10,7 @@ const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { changeStatus, updateItems } = require('../services/orderService');
 const { HttpError } = require('../utils/money');
 const { randomInternalEan13 } = require('../utils/barcode');
+const { importProducts } = require('../services/productImport');
 
 const router = express.Router();
 router.use(requireAuth, requireAdmin);
@@ -82,6 +83,12 @@ async function freeInternalBarcode() {
   }
   throw new HttpError(503, 'No se pudo generar un código, inténtalo de nuevo');
 }
+
+// Importación masiva desde Excel/CSV: { rows: [{ columna: valor }], dryRun: true|false }
+router.post('/products/import', async (req, res) => {
+  const { rows, dryRun = true } = req.body || {};
+  res.json(await importProducts(rows, { dryRun: dryRun !== false }));
+});
 
 router.post('/products/barcode/generate', async (req, res) => {
   res.json({ barcode: await freeInternalBarcode() });
