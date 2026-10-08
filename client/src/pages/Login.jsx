@@ -7,7 +7,7 @@ import { navigate } from '../router';
 export default function Login({ mode = 'login' }) {
   const { login, register } = useAuth();
   const isRegister = mode === 'register';
-  const [form, setForm] = useState({ identifier: '', password: '', fullName: '', dni: '', email: '' });
+  const [form, setForm] = useState({ identifier: '', password: '', fullName: '', email: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [forgot, setForgot] = useState(false);
@@ -20,7 +20,7 @@ export default function Login({ mode = 'login' }) {
     setBusy(true);
     try {
       if (isRegister) {
-        await register({ fullName: form.fullName, dni: form.dni, email: form.email, password: form.password });
+        await register({ fullName: form.fullName, email: form.email, password: form.password });
       } else {
         await login(form.identifier, form.password);
       }
@@ -66,11 +66,10 @@ export default function Login({ mode = 'login' }) {
             {isRegister ? (
               <>
                 <label>Nombre completo<input required value={form.fullName} onChange={set('fullName')} autoComplete="name" placeholder="Nombre y apellidos" /></label>
-                <label>DNI / NIE<input value={form.dni} onChange={set('dni')} placeholder="Opcional · 12345678Z" /></label>
                 <label>Correo electrónico<input required type="email" value={form.email} onChange={set('email')} autoComplete="email" placeholder="tu@correo.com" /></label>
               </>
             ) : (
-              <label>Correo electrónico o DNI<input required value={form.identifier} onChange={set('identifier')} autoComplete="username" placeholder="tu@correo.com" /></label>
+              <label>Correo electrónico<input required type="email" value={form.identifier} onChange={set('identifier')} autoComplete="username" placeholder="tu@correo.com" /></label>
             )}
             <label>
               Contraseña

@@ -10,7 +10,7 @@ Tienda online de cartas, juegos y snacks con toques de rol (d20, cartas). Los cl
 
 | Concepto | Regla |
 |---|---|
-| Usuarios | Nombre completo, DNI/NIE (se valida la letra), correo y contraseña. Se puede entrar con el correo o con el DNI. |
+| Usuarios | Nombre completo, correo y contraseña. Se entra con el correo. **No se guarda el DNI** (al arrancar, el servidor lo borra de las cuentas antiguas). |
 | Saldos | Cada usuario tiene saldo en **€** (prepago: lo carga el admin) y en **CHIKACOINS**. |
 | Precios | Cada producto tiene dos precios que elige el admin: en € y en CHIKACOINS. |
 | Catálogo | 9 categorías fijas (Sobres, Fundas, Accesorios TCG, Bebidas, Snacks, Juegos de mesa, Dados, Merchandising, Otros) y etiquetas **Nuevo**, **Destacado** y **Oferta**, que alimentan las secciones de la portada. |

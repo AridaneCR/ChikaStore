@@ -11,8 +11,10 @@ async function main() {
   await mongoose.connect(process.env.MONGODB_URI);
   console.log('🗄️  Conectado a MongoDB');
 
-  // Pone al día los índices de usuarios (p. ej. el DNI pasó a ser opcional: único solo si existe)
-  await require('./models/User').syncIndexes();
+  // Ya no se guarda el DNI: lo borra de los usuarios antiguos y quita su índice
+  const User = require('./models/User');
+  await require('./utils/purgeDni').purgeDni(User);
+  await User.syncIndexes();
   await require('./models/Product').syncIndexes(); // índice único del código de barras
 
   createApp().listen(PORT, () => console.log(`🐉 ChikakuShop API en http://localhost:${PORT}`));

@@ -40,28 +40,28 @@ after(async () => {
 
 test('flujo completo: registro, compra en coins y en euros, pago en tienda, cancelación', async () => {
   // Admin
-  await User.create({ fullName: 'Admin', dni: '00000000T', email: 'admin@test.com', password: await bcrypt.hash('adminadmin', 10), role: 'admin' });
+  await User.create({ fullName: 'Admin', email: 'admin@test.com', password: await bcrypt.hash('adminadmin', 10), role: 'admin' });
   const adminLogin = await call('/auth/login', { method: 'POST', body: { identifier: 'admin@test.com', password: 'adminadmin' } });
   assert.equal(adminLogin.status, 200);
   const admin = adminLogin.data.token;
 
-  // Registro con DNI inválido → error
-  const bad = await call('/auth/register', { method: 'POST', body: { fullName: 'X', dni: '12345678A', email: 'x@test.com', password: '12345678' } });
+  // Correo no válido → error
+  const bad = await call('/auth/register', { method: 'POST', body: { fullName: 'X', email: 'no-es-un-correo', password: '12345678' } });
   assert.equal(bad.status, 400);
 
-  // El DNI es opcional: dos registros sin DNI no chocan entre sí
-  assert.equal((await call('/auth/register', { method: 'POST', body: { fullName: 'Sin DNI 1', email: 'sindni1@test.com', password: '12345678' } })).status, 201);
-  const noDni = await call('/auth/register', { method: 'POST', body: { fullName: 'Sin DNI 2', email: 'sindni2@test.com', password: '12345678' } });
-  assert.equal(noDni.status, 201);
-  assert.equal(noDni.data.user.dni, null);
-
+  // Aunque alguien mande un DNI, no se guarda
   const reg = await call('/auth/register', { method: 'POST', body: { fullName: 'Ana Pérez', dni: '12345678Z', email: 'ana@test.com', password: '12345678' } });
   assert.equal(reg.status, 201);
+  assert.equal(reg.data.user.dni, undefined);
+  assert.equal((await User.collection.findOne({ email: 'ana@test.com' })).dni, undefined);
   const ana = reg.data.token;
   const anaId = reg.data.user.id;
 
-  // Login por DNI
-  assert.equal((await call('/auth/login', { method: 'POST', body: { identifier: '12345678z', password: '12345678' } })).status, 200);
+  // Correo repetido → 409
+  assert.equal((await call('/auth/register', { method: 'POST', body: { fullName: 'Ana 2', email: 'ANA@test.com', password: '12345678' } })).status, 409);
+
+  // Login con el correo (sin distinguir mayúsculas)
+  assert.equal((await call('/auth/login', { method: 'POST', body: { identifier: 'Ana@Test.com', password: '12345678' } })).status, 200);
 
   // Producto con dos precios
   const prod = await call('/admin/products', { method: 'POST', token: admin, body: { name: 'Poción', priceEurCents: 500, priceCoins: 600, stock: 10 } });
@@ -177,15 +177,15 @@ test('flujo completo: registro, compra en coins y en euros, pago en tienda, canc
   assert.equal((await call('/products?tag=destacado')).data.total, 0);
 
   // El admin crea un usuario con saldo inicial, y ese usuario puede entrar
-  const created = await call('/admin/users', { method: 'POST', token: admin, body: { fullName: 'Luis Pérez', dni: '87654321X', email: 'luis@test.com', password: 'clave1234', balanceEurCents: 1000, balanceCoins: 300 } });
+  const created = await call('/admin/users', { method: 'POST', token: admin, body: { fullName: 'Luis Pérez', email: 'luis@test.com', password: 'clave1234', balanceEurCents: 1000, balanceCoins: 300 } });
   assert.equal(created.status, 201);
   assert.equal(created.data.balanceEurCents, 1000);
   assert.equal(created.data.role, 'user');
-  assert.equal((await call('/auth/login', { method: 'POST', body: { identifier: '87654321x', password: 'clave1234' } })).status, 200);
-  // DNI repetido → 409
-  assert.equal((await call('/admin/users', { method: 'POST', token: admin, body: { fullName: 'X', dni: '87654321X', email: 'otro@test.com', password: 'clave1234' } })).status, 409);
+  assert.equal((await call('/auth/login', { method: 'POST', body: { identifier: 'luis@test.com', password: 'clave1234' } })).status, 200);
+  // Correo repetido → 409
+  assert.equal((await call('/admin/users', { method: 'POST', token: admin, body: { fullName: 'X', email: 'luis@test.com', password: 'clave1234' } })).status, 409);
   // Un usuario normal no puede crear usuarios
-  assert.equal((await call('/admin/users', { method: 'POST', token: ana, body: { fullName: 'X', dni: '11111111H', email: 'x2@test.com', password: 'clave1234' } })).status, 403);
+  assert.equal((await call('/admin/users', { method: 'POST', token: ana, body: { fullName: 'X', email: 'x2@test.com', password: 'clave1234' } })).status, 403);
 
   // Un usuario normal no entra al panel
   assert.equal((await call('/admin/summary', { token: ana })).status, 403);

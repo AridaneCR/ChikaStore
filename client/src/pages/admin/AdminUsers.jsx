@@ -39,7 +39,7 @@ export default function AdminUsers() {
         <aside className="card user-list">
           <label className="search-box small">
             <Icon name="search" size={16} />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nombre, DNI o correo" aria-label="Buscar usuario" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nombre o correo" aria-label="Buscar usuario" />
           </label>
           {!list ? <Spinner /> : list.length === 0 ? <p className="muted pad">Sin resultados.</p> : (
             <ul>
@@ -86,7 +86,7 @@ function UserEditor({ id, onSaved }) {
   const load = useCallback(() => {
     api(`/admin/users/${id}`).then((d) => {
       setData(d);
-      setF({ fullName: d.user.fullName, dni: d.user.dni || '', email: d.user.email, role: d.user.role, active: d.user.active });
+      setF({ fullName: d.user.fullName, email: d.user.email, role: d.user.role, active: d.user.active });
     }).catch((e) => toast(e.message, 'bad'));
   }, [id]);
 
@@ -132,7 +132,6 @@ function UserEditor({ id, onSaved }) {
       <form className="card form" onSubmit={save}>
         <label>Nombre completo<input required value={f.fullName} onChange={set('fullName')} /></label>
         <div className="form-2">
-          <label>DNI<input value={f.dni} onChange={set('dni')} placeholder="Opcional" /></label>
           <label>Correo electrónico<input required type="email" value={f.email} onChange={set('email')} /></label>
         </div>
         <div className="form-2">
@@ -205,7 +204,7 @@ const randomPassword = () => {
 };
 
 function NewUserModal({ onClose, onCreated }) {
-  const [f, setF] = useState({ fullName: '', dni: '', email: '', password: randomPassword(), role: 'user', eur: '', coins: '' });
+  const [f, setF] = useState({ fullName: '', email: '', password: randomPassword(), role: 'user', eur: '', coins: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(null);
@@ -216,7 +215,7 @@ function NewUserModal({ onClose, onCreated }) {
     setError('');
     setBusy(true);
     try {
-      const body = { fullName: f.fullName, dni: f.dni, email: f.email, password: f.password, role: f.role };
+      const body = { fullName: f.fullName, email: f.email, password: f.password, role: f.role };
       if (f.eur !== '') body.balanceEurCents = eurosToCents(f.eur);
       if (f.coins !== '') body.balanceCoins = Math.round(Number(String(f.coins).replace(/\./g, '')));
       const user = await api('/admin/users', { method: 'POST', body });
@@ -244,7 +243,7 @@ function NewUserModal({ onClose, onCreated }) {
         <div className="form">
           <p>Dale estos datos de acceso a <strong>{done.user.fullName}</strong>. La contraseña no se volverá a mostrar.</p>
           <div className="meta-grid">
-            <div><small>Usuario</small><strong>{done.user.email}</strong>{done.user.dni && <small>o DNI {done.user.dni}</small>}</div>
+            <div><small>Usuario</small><strong>{done.user.email}</strong></div>
             <div><small>Contraseña</small><strong className="mono">{done.password}</strong></div>
           </div>
           <div className="form-actions">
@@ -261,7 +260,6 @@ function NewUserModal({ onClose, onCreated }) {
       <form className="form" onSubmit={submit}>
         <label>Nombre completo<input required value={f.fullName} onChange={set('fullName')} autoComplete="off" /></label>
         <div className="form-2">
-          <label>DNI / NIE<input value={f.dni} onChange={set('dni')} placeholder="Opcional · 12345678Z" autoComplete="off" /></label>
           <label>Correo electrónico<input required type="email" value={f.email} onChange={set('email')} autoComplete="off" /></label>
         </div>
         <div className="form-2">

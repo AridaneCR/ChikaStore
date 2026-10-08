@@ -164,7 +164,7 @@ router.get('/orders', async (req, res) => {
   if (q) {
     const term = String(q).trim();
     const users = await User.find(
-      { $or: [{ fullName: { $regex: escapeRegex(term), $options: 'i' } }, { dni: { $regex: escapeRegex(term.toUpperCase()) } }, { email: { $regex: escapeRegex(term), $options: 'i' } }] },
+      { $or: [{ fullName: { $regex: escapeRegex(term), $options: 'i' } }, { email: { $regex: escapeRegex(term), $options: 'i' } }] },
       { _id: 1 }
     ).lean();
     const or = [{ code: { $regex: escapeRegex(term) } }, { user: { $in: users.map((u) => u._id) } }];
@@ -178,7 +178,7 @@ router.get('/orders', async (req, res) => {
       .sort({ createdAt: -1 })
       .skip((pg - 1) * lim)
       .limit(lim)
-      .populate('user', 'fullName dni email')
+      .populate('user', 'fullName email')
       .lean(),
     Order.countDocuments(filter),
   ]);
@@ -186,7 +186,7 @@ router.get('/orders', async (req, res) => {
 });
 
 router.get('/orders/:id', async (req, res) => {
-  const order = await Order.findById(req.params.id).populate('user', 'fullName dni email').lean();
+  const order = await Order.findById(req.params.id).populate('user', 'fullName email').lean();
   if (!order) throw new HttpError(404, 'Pedido no encontrado');
   res.json(order);
 });
@@ -197,7 +197,7 @@ router.patch('/orders/:id', async (req, res) => {
   if (items) await updateItems(req.params.id, items);
   if (status) await changeStatus(req.params.id, status, req.user._id);
   if (adminNote !== undefined) await Order.updateOne({ _id: req.params.id }, { adminNote: String(adminNote) });
-  const order = await Order.findById(req.params.id).populate('user', 'fullName dni email').lean();
+  const order = await Order.findById(req.params.id).populate('user', 'fullName email').lean();
   if (!order) throw new HttpError(404, 'Pedido no encontrado');
   res.json(order);
 });
@@ -212,7 +212,6 @@ router.get('/users', async (req, res) => {
     filter.$or = [
       { fullName: { $regex: t, $options: 'i' } },
       { email: { $regex: t, $options: 'i' } },
-      { dni: { $regex: t.toUpperCase() } },
     ];
   }
   const users = await User.find(filter).sort({ fullName: 1 }).limit(500);
@@ -229,10 +228,10 @@ router.get('/users/:id', async (req, res) => {
   res.json({ user: user.toPublic(), orders, movements });
 });
 
-// Crear usuario desde el panel: { fullName, dni?, email, password, role?, balanceEurCents?, balanceCoins? }
+// Crear usuario desde el panel: { fullName, email, password, role?, balanceEurCents?, balanceCoins? }
 // El admin pone la contraseña inicial; después solo la cambia el propio usuario.
 router.post('/users', async (req, res) => {
-  const { fullName, dni, email, password, role = 'user', note } = req.body || {};
+  const { fullName, email, password, role = 'user', note } = req.body || {};
   if (!fullName || !email || !password) {
     throw new HttpError(400, 'Nombre completo, correo y contraseña son obligatorios');
   }
@@ -249,7 +248,6 @@ router.post('/users', async (req, res) => {
 
   const user = await User.create({
     fullName,
-    dni: dni || undefined,
     email,
     role,
     password: await bcrypt.hash(String(password), 10),
@@ -270,7 +268,7 @@ router.patch('/users/:id', async (req, res) => {
   const user = await User.findById(req.params.id);
   if (!user) throw new HttpError(404, 'Usuario no encontrado');
 
-  for (const k of ['fullName', 'dni', 'email', 'role', 'active']) {
+  for (const k of ['fullName', 'email', 'role', 'active']) {
     if (body[k] !== undefined) user[k] = body[k];
   }
   if (String(user._id) === String(req.user._id) && (user.role !== 'admin' || user.active === false)) {

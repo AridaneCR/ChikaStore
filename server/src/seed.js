@@ -9,6 +9,7 @@ const bcrypt = require('bcryptjs');
 const User = require('./models/User');
 const Product = require('./models/Product');
 const { randomInternalEan13 } = require('./utils/barcode');
+const { purgeDni } = require('./utils/purgeDni');
 
 const DEMO_PRODUCTS = [
   // nombre, descripción corta, categoría, etiquetas, € (céntimos), CHIKACOINS, stock
@@ -26,7 +27,8 @@ const DEMO_PRODUCTS = [
 
 async function main() {
   await mongoose.connect(process.env.MONGODB_URI);
-  await User.syncIndexes(); // el DNI es opcional: índice único solo para quien lo tenga
+  await purgeDni(User);
+  await User.syncIndexes(); // borra el índice antiguo del DNI
   await Product.syncIndexes(); // código de barras único
 
   const email = (process.env.ADMIN_EMAIL || '').toLowerCase();
@@ -39,7 +41,6 @@ async function main() {
       $set: { role: 'admin', password, active: true },
       $setOnInsert: {
         fullName: process.env.ADMIN_NAME || 'Administrador',
-        ...(process.env.ADMIN_DNI ? { dni: process.env.ADMIN_DNI } : {}),
         email,
       },
     },

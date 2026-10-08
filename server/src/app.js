@@ -44,7 +44,7 @@ function createApp() {
     if (err.code === 11000) {
       const field = Object.keys(err.keyPattern || {})[0];
       if (field === 'barcode') return res.status(409).json({ error: 'Ya hay otro producto con ese código de barras' });
-      const names = { email: 'correo electrónico', dni: 'DNI' };
+      const names = { email: 'correo electrónico' };
       return res.status(409).json({ error: `Ya existe una cuenta con ese ${names[field] || field}` });
     }
     console.error(err);

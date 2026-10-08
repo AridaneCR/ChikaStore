@@ -23,7 +23,7 @@ export default function Profile() {
         <span className="avatar avatar-lg">{initials(user.fullName)}</span>
         <div>
           <h2>{user.fullName}</h2>
-          <p className="muted">{user.email}{user.dni ? ` · DNI ${user.dni}` : ''} · Cliente desde {formatDate(user.createdAt)}</p>
+          <p className="muted">{user.email} · Cliente desde {formatDate(user.createdAt)}</p>
         </div>
       </div>
 
