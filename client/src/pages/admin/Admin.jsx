@@ -28,7 +28,7 @@ export default function Admin({ path }) {
           ))}
           <a href="#/"><Icon name="store" size={18} /> Ver tienda</a>
         </nav>
-        <button className="sidebar-logout" onClick={logout}><Icon name="logout" size={18} /> Cerrar sesión</button>
+        <button className="sidebar-logout" onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión"><Icon name="logout" size={18} /> <span>Cerrar sesión</span></button>
       </aside>
       <main className="admin-main">
         <Page />

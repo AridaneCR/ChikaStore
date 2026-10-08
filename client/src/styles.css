@@ -234,7 +234,7 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; accent-
 }
 .hero-copy { position: relative; z-index: 2; display: grid; align-content: center; gap: 0; }
 .hero-tag { justify-self: start; background: rgba(200, 16, 46, 0.22); color: #ff8fa0; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; padding: 6px 12px; border-radius: 999px; }
-.hero-title { font-size: clamp(2.6rem, 6.4vw, 5.2rem); margin: 10px 0 6px; }
+.hero-title { font-size: clamp(2.6rem, 5.4vw, 4.6rem); margin: 10px 0 6px; }
 .hero-title span { color: var(--red-400); }
 .hero-sub { font-size: clamp(1rem, 1.7vw, 1.3rem); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 22px; }
 .hero-cats { display: flex; gap: 26px; flex-wrap: wrap; margin-bottom: 26px; }
@@ -265,11 +265,11 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; accent-
 .perk-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; background: var(--red-soft); color: var(--red); flex: none; }
 
 /* ---------- Categorías ---------- */
-.cat-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 12px; }
+.cat-grid { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 12px; }
 .cat-tile {
   position: relative; display: flex; flex-direction: column; justify-content: space-between; aspect-ratio: 1 / 0.8;
   background: var(--dark); color: #fff; border-radius: 12px; padding: 14px 12px 12px; border-bottom: 3px solid var(--red);
-  font-weight: 700; font-size: 0.92rem; transition: transform 0.15s, background 0.15s;
+  font-weight: 700; font-size: 0.92rem; transition: transform 0.15s, background 0.15s; min-width: 0; overflow-wrap: anywhere; hyphens: auto;
 }
 .cat-tile .icon { color: var(--red-400); align-self: center; }
 .cat-tile:hover { transform: translateY(-3px); background: var(--dark-2); }
@@ -431,7 +431,8 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; accent-
    ============================================================ */
 .admin { display: grid; grid-template-columns: 218px 1fr; min-height: 100vh; background: linear-gradient(90deg, var(--black) 218px, var(--bg) 218px); }
 .sidebar { background: var(--black); color: #fff; padding: 20px 12px; display: flex; flex-direction: column; gap: 22px; position: sticky; top: 0; height: 100vh; }
-.sidebar .brand { padding: 0 4px; }
+.sidebar .brand { padding: 0 4px; min-width: 0; }
+.sidebar .brand-name { font-size: 1.08rem; white-space: nowrap; } /* CHIKAKUSHOP cabe en la barra de 218px */
 .sidebar nav { display: grid; gap: 4px; }
 .sidebar nav a, .sidebar-logout { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 9px; color: rgba(255, 255, 255, 0.86); font-weight: 600; font-size: 0.88rem; }
 .sidebar nav a:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
@@ -525,8 +526,12 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; accent-
   .user-chip-text { display: none; }
   .user-chip { padding: 4px; }
   .chev { display: none; }
-  .cat-grid { grid-template-columns: repeat(5, 1fr); }
+  .cat-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .hero { padding: 40px 44px 52px; }
+  .header-inner { gap: 16px; }
+  .header-inner > .brand .brand-sub { display: none; }
+  .header-inner > .brand .brand-name { font-size: 1.3rem; }
+  .header-inner .search-box { min-width: 150px; }
 }
 @media (max-width: 980px) {
   .header-inner { flex-wrap: wrap; gap: 10px 16px; }
@@ -539,9 +544,13 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; accent-
   .cart-layout { grid-template-columns: 1fr; }
   .checkout { position: static; }
   .admin { grid-template-columns: 1fr; background: var(--bg); }
-  .sidebar { position: static; height: auto; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px 16px; }
-  .sidebar nav { display: flex; flex-wrap: wrap; }
-  .sidebar-logout { margin: 0 0 0 auto; }
+  /* Panel en tablet/móvil: barra superior (marca + salir) y pestañas deslizables */
+  .sidebar { position: sticky; top: 0; z-index: 30; height: auto; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px 12px; padding: 12px 16px 10px; }
+  .sidebar .brand-name { font-size: 1.15rem; }
+  .sidebar nav { grid-column: 1 / -1; grid-row: 2; display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+  .sidebar nav::-webkit-scrollbar { display: none; }
+  .sidebar nav a { flex: none; white-space: nowrap; padding: 8px 12px; background: rgba(255, 255, 255, 0.06); }
+  .sidebar-logout { margin: 0; grid-column: 2; grid-row: 1; padding: 8px 10px; }
   .admin-main { padding: 22px 16px 48px; }
   .product-editor, .users-layout { grid-template-columns: 1fr; }
   .editor-preview { position: static; max-width: 240px; }
@@ -555,7 +564,7 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; accent-
   .header-inner { padding: 10px 16px; gap: 10px 8px; }
   .brand .logo-mark { width: 32px !important; height: 32px !important; }
   .brand { gap: 7px; }
-  .brand-name { font-size: 1.05rem; }
+  .brand-name, .header-inner > .brand .brand-name { font-size: 1.05rem; }
   .header-actions .icon-btn { width: 36px; height: 36px; }
   .header-actions .avatar { width: 36px; height: 36px; font-size: 0.78rem; }
   .brand-sub { display: none; }
@@ -571,6 +580,10 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; accent-
   .product-card .btn { padding: 9px 8px; font-size: 0.8rem; }
   .product-price strong { font-size: 1rem; }
   .hero-cats { gap: 16px; }
+  .hero { padding: 26px 20px 36px; }
+  .hero-title { font-size: clamp(1.7rem, 9.8vw, 2.6rem); }
+  .main-nav { scrollbar-width: none; }
+  .sidebar-logout span { display: none; }
   .cart-line { grid-template-columns: 64px 1fr auto; grid-template-areas: 'img info del' 'img step total'; gap: 8px 12px; }
   .cart-thumb { grid-area: img; width: 64px; height: 64px; }
   .cart-info { grid-area: info; }
@@ -583,4 +596,12 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; accent-
   .scan-fab { display: grid; place-items: center; position: fixed; right: 16px; bottom: 18px; z-index: 35; width: 58px; height: 58px; border-radius: 50%; background: var(--red); color: #fff; box-shadow: 0 10px 24px rgba(200, 16, 46, 0.4); }
   .scanner { aspect-ratio: 3 / 4; }
   .scan-result { flex-wrap: wrap; }
+}
+@media (max-width: 380px) {
+  .brand .logo-mark { width: 28px !important; height: 28px !important; }
+  .brand-name, .sidebar .brand-name, .header-inner > .brand .brand-name { font-size: 0.95rem; }
+  .header-actions .icon-btn { width: 32px; height: 32px; }
+  .header-actions .avatar { width: 32px; height: 32px; }
+  .cat-tile { font-size: 0.72rem; }
+  .nav-scan { display: none !important; } /* ya está el botón flotante de escanear */
 }

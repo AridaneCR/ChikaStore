@@ -57,7 +57,7 @@ export default function Navbar({ route }) {
         </nav>
 
         <div className="header-actions">
-          <a href="#/escanear" className={`icon-btn${route.path === '/escanear' ? ' on' : ''}`} aria-label="Escanear código de barras" title="Escanear código de barras">
+          <a href="#/escanear" className={`icon-btn nav-scan${route.path === '/escanear' ? ' on' : ''}`} aria-label="Escanear código de barras" title="Escanear código de barras">
             <Icon name="barcode" size={20} />
           </a>
           <a href="#/favoritos" className={`icon-btn${route.path === '/favoritos' ? ' on' : ''}`} aria-label={`Favoritos (${favs.length})`}>
