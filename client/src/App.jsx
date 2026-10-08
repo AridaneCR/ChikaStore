@@ -5,6 +5,7 @@ import { Spinner, Toasts } from './components/ui';
 import { useAuth } from './context/AuthContext';
 import Admin from './pages/admin/Admin';
 import Cart from './pages/Cart';
+import { ForgotPassword, ResetPassword, SocialCallback } from './pages/AuthPages';
 import Login from './pages/Login';
 import Orders from './pages/Orders';
 import Profile from './pages/Profile';
@@ -24,6 +25,13 @@ const ROUTES = {
   '/perfil': Profile,
 };
 
+// Pantallas de acceso que funcionan con o sin sesión (enlaces de correo, vuelta de Discord)
+const AUTH_PAGES = {
+  '/recuperar': ForgotPassword,
+  '/restablecer': ResetPassword,
+  '/social': SocialCallback,
+};
+
 export default function App() {
   const { user, loading } = useAuth();
   const route = useRoute();
@@ -36,10 +44,20 @@ export default function App() {
 
   if (loading) return <Spinner />;
 
+  const AuthPage = AUTH_PAGES[path];
+  if (AuthPage && !(user && path === '/recuperar')) {
+    return (
+      <>
+        <AuthPage query={route.query} />
+        <Toasts />
+      </>
+    );
+  }
+
   if (!user) {
     return (
       <>
-        <Login mode={path === '/registro' ? 'register' : 'login'} />
+        <Login mode={path === '/registro' ? 'register' : 'login'} query={route.query} />
         <Toasts />
       </>
     );

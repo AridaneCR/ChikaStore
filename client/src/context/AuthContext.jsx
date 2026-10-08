@@ -23,19 +23,19 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const login = async (identifier, password) => {
-    const { token, user: u } = await api('/auth/login', { method: 'POST', body: { identifier, password } });
+  // Todas las formas de entrar acaban aquí: guarda la sesión que devuelve el servidor
+  const session = async (path, body) => {
+    const { token, user: u } = await api(path, { method: 'POST', body });
     setToken(token);
     setUser(u);
     return u;
   };
 
-  const register = async (data) => {
-    const { token, user: u } = await api('/auth/register', { method: 'POST', body: data });
-    setToken(token);
-    setUser(u);
-    return u;
-  };
+  const login = (identifier, password) => session('/auth/login', { identifier, password });
+  const register = (data) => session('/auth/register', data);
+  const loginWithGoogle = (credential) => session('/auth/google', { credential });
+  const exchangeSocialCode = (code) => session('/auth/social/exchange', { code });
+  const resetPassword = (token, password) => session('/auth/reset', { token, password });
 
   const logout = () => {
     setToken(null);
@@ -44,7 +44,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refresh, setUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, loginWithGoogle, exchangeSocialCode, resetPassword, logout, refresh, setUser }}>
       {children}
     </AuthContext.Provider>
   );

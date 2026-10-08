@@ -24,6 +24,9 @@ export default function Profile() {
         <div>
           <h2>{user.fullName}</h2>
           <p className="muted">{user.email} · Cliente desde {formatDate(user.createdAt)}</p>
+          {(user.linked?.google || user.linked?.discord) && (
+            <p className="muted small">Vinculada con {[user.linked.google && 'Google', user.linked.discord && 'Discord'].filter(Boolean).join(' y ')}</p>
+          )}
         </div>
       </div>
 

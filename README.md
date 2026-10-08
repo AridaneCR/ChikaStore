@@ -11,6 +11,8 @@ Tienda online de cartas, juegos y snacks con toques de rol (d20, cartas). Los cl
 | Concepto | Regla |
 |---|---|
 | Usuarios | Nombre completo, correo y contraseña. Se entra con el correo. **No se guarda el DNI** (al arrancar, el servidor lo borra de las cuentas antiguas). |
+| Recuperar contraseña | **¿Olvidaste tu contraseña?** envía un enlace por correo (Brevo) que caduca en 1 hora y sirve una sola vez. Al cambiarla se cierran las sesiones abiertas en otros dispositivos. |
+| Login social | **Google** y **Discord**. Si el correo ya tiene cuenta, se vincula a ella; si no, se crea. Los botones solo aparecen si sus variables están configuradas en el backend. |
 | Saldos | Cada usuario tiene saldo en **€** (prepago: lo carga el admin) y en **CHIKACOINS**. |
 | Precios | Cada producto tiene dos precios que elige el admin: en € y en CHIKACOINS. |
 | Catálogo | 9 categorías fijas (Sobres, Fundas, Accesorios TCG, Bebidas, Snacks, Juegos de mesa, Dados, Merchandising, Otros) y etiquetas **Nuevo**, **Destacado** y **Oferta**, que alimentan las secciones de la portada. |
@@ -75,6 +77,9 @@ Las rutas usan `#/` (hash), así que el sitio estático funciona sin configurar 
 |---|---|---|
 | POST | `/api/auth/register` · `/api/auth/login` | público |
 | GET | `/api/auth/me` | usuario |
+| POST | `/api/auth/forgot` `{ email }` · `/api/auth/reset` `{ token, password }` | público |
+| GET | `/api/auth/providers` · `/api/auth/discord` (redirección) · `/api/auth/discord/callback` | público |
+| POST | `/api/auth/google` `{ credential }` · `/api/auth/social/exchange` `{ code }` | público |
 | GET | `/api/products` (`q`, `category`, `tag`, `sort`, `page`) · `/api/products/categories` · `/api/products/barcode/:code` | público |
 | POST | `/api/admin/products/barcode/generate` · `/api/admin/products/barcode/fill` | admin |
 | POST | `/api/admin/products/import` `{ rows, dryRun }` (vista previa con `dryRun: true`) | admin |

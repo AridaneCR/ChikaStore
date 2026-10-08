@@ -6,6 +6,7 @@ const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/products');
 const orderRoutes = require('./routes/orders');
 const adminRoutes = require('./routes/admin');
+const { allowedOrigins } = require('./utils/origins');
 
 function createApp() {
   const app = express();
@@ -14,12 +15,8 @@ function createApp() {
   // real del cliente y el límite de intentos de login no se comparte entre todos los usuarios.
   app.set('trust proxy', Number(process.env.TRUST_PROXY ?? 1));
 
-  // Orígenes permitidos (CLIENT_URL, separados por comas). Se ignoran espacios y la "/" final,
-  // porque el navegador envía el origen sin barra: "https://chikastore.onrender.com".
-  const origins = (process.env.CLIENT_URL || 'http://localhost:5173')
-    .split(',')
-    .map((s) => s.trim().replace(/\/+$/, ''))
-    .filter(Boolean);
+  // Orígenes permitidos (CLIENT_URL, separados por comas)
+  const origins = allowedOrigins();
   if (process.env.NODE_ENV !== 'test') console.log('🌐 CORS permitido para:', origins.join(', '));
   app.use(helmet());
   app.use(cors({ origin: origins }));

@@ -208,3 +208,98 @@ test('código de pedido: pasa a 5 dígitos cuando se agotan las 10.000 combinaci
   const code = await generateOrderCode();
   assert.match(code, new RegExp(`^${year}-\\d{5}$`));
 });
+
+test('recuperar contraseña: enlace por correo, cambio y cierre de sesiones', async () => {
+  const mailer = require('../src/utils/mailer');
+  const sent = [];
+  const original = mailer.sendMail;
+  mailer.sendMail = async (m) => { sent.push(m); return { sent: true }; };
+  try {
+    const reg = await call('/auth/register', { method: 'POST', body: { fullName: 'Marta Ruiz', email: 'marta@test.com', password: 'vieja1234' } });
+    const oldToken = reg.data.token;
+
+    // Correo que no existe → misma respuesta y no se envía nada
+    assert.equal((await call('/auth/forgot', { method: 'POST', body: { email: 'nadie@test.com' } })).status, 200);
+    assert.equal((await call('/auth/forgot', { method: 'POST', body: { email: 'MARTA@test.com' } })).status, 200);
+    await new Promise((r) => setTimeout(r, 20)); // el envío no se espera
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0].to, 'marta@test.com');
+    const token = sent[0].text.match(/restablecer\?token=([\w-]+)/)[1];
+
+    assert.equal((await call('/auth/reset', { method: 'POST', body: { token, password: 'corta' } })).status, 400);
+    assert.equal((await call('/auth/reset', { method: 'POST', body: { token: 'falso', password: 'nueva1234' } })).status, 400);
+    const ok = await call('/auth/reset', { method: 'POST', body: { token, password: 'nueva1234' } });
+    assert.equal(ok.status, 200);
+    // El enlace solo vale una vez
+    assert.equal((await call('/auth/reset', { method: 'POST', body: { token, password: 'otra12345' } })).status, 400);
+
+    // La sesión antigua ya no vale; la nueva sí
+    assert.equal((await call('/auth/me', { token: oldToken })).status, 401);
+    assert.equal((await call('/auth/me', { token: ok.data.token })).status, 200);
+    assert.equal((await call('/auth/login', { method: 'POST', body: { identifier: 'marta@test.com', password: 'vieja1234' } })).status, 401);
+    assert.equal((await call('/auth/login', { method: 'POST', body: { identifier: 'marta@test.com', password: 'nueva1234' } })).status, 200);
+  } finally {
+    mailer.sendMail = original;
+  }
+});
+
+test('login social: Google y Discord crean o vinculan la cuenta', async () => {
+  process.env.GOOGLE_CLIENT_ID = 'google-client';
+  process.env.DISCORD_CLIENT_ID = 'discord-client';
+  process.env.DISCORD_CLIENT_SECRET = 'discord-secret';
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => {
+    const u = String(url);
+    const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
+    if (u.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
+      if (!u.includes('id_token=bueno')) return json({ error: 'invalid_token' }, 400);
+      return json({ aud: 'google-client', iss: 'https://accounts.google.com', exp: String(Math.floor(Date.now() / 1000) + 3600), email_verified: 'true', email: 'Pablo@Gmail.com', sub: 'g-123', name: 'Pablo Gómez' });
+    }
+    if (u === 'https://discord.com/api/oauth2/token') return json({ access_token: 'dc-token' });
+    if (u === 'https://discord.com/api/users/@me') return json({ id: 'd-456', email: 'marta@test.com', verified: true, username: 'marta' });
+    return realFetch(url, opts);
+  };
+  try {
+    assert.deepEqual((await call('/auth/providers')).data, { google: 'google-client', discord: true });
+
+    // Google: credencial falsa → 401; buena → crea la cuenta sin contraseña
+    assert.equal((await call('/auth/google', { method: 'POST', body: { credential: 'malo' } })).status, 401);
+    const g = await call('/auth/google', { method: 'POST', body: { credential: 'bueno' } });
+    assert.equal(g.status, 200);
+    assert.equal(g.data.user.email, 'pablo@gmail.com');
+    assert.equal(g.data.user.linked.google, true);
+    // Segunda vez: misma cuenta
+    assert.equal((await call('/auth/google', { method: 'POST', body: { credential: 'bueno' } })).data.user.id, g.data.user.id);
+    // Sin contraseña no se puede entrar con contraseña
+    assert.equal((await call('/auth/login', { method: 'POST', body: { identifier: 'pablo@gmail.com', password: 'loquesea1' } })).status, 401);
+
+    // Discord: redirección con state + cookie, vuelta con código y canje por la sesión
+    const start = await realFetch(`${base}/auth/discord?from=http://localhost:5173`, { redirect: 'manual' });
+    assert.equal(start.status, 302);
+    const auth = new URL(start.headers.get('location'));
+    assert.equal(auth.host, 'discord.com');
+    const state = auth.searchParams.get('state');
+    const cookie = start.headers.get('set-cookie').split(';')[0];
+
+    // Sin la cookie (otro navegador) → error
+    const noCookie = await realFetch(`${base}/auth/discord/callback?code=abc&state=${state}`, { redirect: 'manual' });
+    assert.match(noCookie.headers.get('location'), /#\/login\?error=/);
+
+    const back = await realFetch(`${base}/auth/discord/callback?code=abc&state=${state}`, { redirect: 'manual', headers: { cookie } });
+    const loc = back.headers.get('location');
+    assert.match(loc, /^http:\/\/localhost:5173\/#\/social\?code=/);
+    const code = decodeURIComponent(loc.split('code=')[1]);
+    const ex = await call('/auth/social/exchange', { method: 'POST', body: { code } });
+    assert.equal(ex.status, 200);
+    // Vinculada a la cuenta existente con el mismo correo
+    assert.equal(ex.data.user.email, 'marta@test.com');
+    assert.equal(ex.data.user.linked.discord, true);
+    // El código no se puede reutilizar
+    assert.equal((await call('/auth/social/exchange', { method: 'POST', body: { code } })).status, 400);
+  } finally {
+    globalThis.fetch = realFetch;
+    delete process.env.GOOGLE_CLIENT_ID;
+    delete process.env.DISCORD_CLIENT_ID;
+    delete process.env.DISCORD_CLIENT_SECRET;
+  }
+});
