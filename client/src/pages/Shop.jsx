@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, qs } from '../api';
-import Icon, { CATEGORY_ICONS, Coin, LogoMark } from '../components/Icon';
+import Icon, { CATEGORY_ICONS, Coin } from '../components/Icon';
 import ProductCard from '../components/ProductCard';
 import { Empty, Spinner, toast } from '../components/ui';
 import { useCart } from '../context/CartContext';
@@ -93,20 +93,12 @@ export default function Shop() {
             <a href="#/chikacoins" className="btn btn-outline-light btn-lg">¿Qué son las CHIKACOINS?</a>
           </div>
         </div>
-        <div className="hero-art" aria-hidden="true">
-          <svg className="hero-sigil" viewBox="0 0 400 400">
-            <circle cx="200" cy="200" r="190" /><circle cx="200" cy="200" r="150" />
-            <path d="M200 10 365 105v190L200 390 35 295V105Z" /><path d="M200 50 330 290H70Z" />
-          </svg>
-          <div className="tcg tcg-back tcg-l" />
-          <div className="tcg tcg-back tcg-r" />
-          <div className="tcg tcg-front">
-            <div className="tcg-frame">
-              <LogoMark size={96} />
-              <span>CHIKAKU</span>
-            </div>
-          </div>
-          <span className="hero-coin"><Coin size={64} label /></span>
+        <div className="hero-art hero-art-logo" aria-hidden="true">
+          <picture>
+            <source type="image/webp" srcSet="/chikaku-logo-640.webp 640w, /chikaku-logo-1200.webp 1200w" sizes="(max-width: 980px) 80vw, 560px" />
+            <img src="/chikaku-logo.png" width="1200" height="636" alt="" />
+          </picture>
+          <span className="hero-coin hero-coin-a"><Coin size={64} label /></span>
         </div>
         <div className="hero-dots">
           {SLIDES.map((s, i) => (

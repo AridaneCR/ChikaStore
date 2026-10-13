@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import Icon, { Coin, LogoMark } from './Icon';
+import Icon, { Coin } from './Icon';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { href, navigate } from '../router';
@@ -8,7 +8,7 @@ import { formatCoins, formatEur, initials } from '../utils/format';
 export function Brand({ sub = 'Cartas · Juegos · Snacks · Y más', dark = false }) {
   return (
     <a href="#/" className={`brand${dark ? ' brand-dark' : ''}`} aria-label="ChikakuShop, ir al inicio">
-      <LogoMark size={dark ? 34 : 44} />
+      <span className="brand-avatar"><img src="/chikaku-face.webp" alt="" width="256" height="256" /></span>
       <span className="brand-text">
         <span className="brand-name">CHIKAKU<span>SHOP</span></span>
         {sub && <span className="brand-sub">{sub}</span>}
