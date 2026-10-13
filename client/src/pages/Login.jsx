@@ -1,17 +1,23 @@
 import { useState } from 'react';
 import Icon, { Coin } from '../components/Icon';
-import { Brand } from '../components/Navbar';
 import SocialLogin from '../components/SocialLogin';
 import { useAuth } from '../context/AuthContext';
 import { navigate } from '../router';
 
-// Diseño común de las pantallas de acceso: portada a la izquierda y tarjeta a la derecha
+// Diseño común de las pantallas de acceso: banner con el logo a la izquierda (arriba en móvil)
+// y tarjeta del formulario a la derecha
 export function AuthLayout({ children }) {
   return (
     <div className="auth">
       <section className="auth-hero">
-        <Brand dark sub="" />
+        <a href="#/" className="auth-logo" aria-label="ChikakuShop, ir al inicio">
+          <picture>
+            <source type="image/webp" srcSet="/chikaku-logo-640.webp 640w, /chikaku-logo-1200.webp 1200w" sizes="(max-width: 980px) 90vw, 560px" />
+            <img src="/chikaku-logo.png" width="1200" height="636" alt="Chikaku" decoding="async" fetchpriority="high" />
+          </picture>
+        </a>
         <div className="auth-hero-copy">
+          <span className="auth-eyebrow">ChikakuShop · Tienda online</span>
           <h1 className="display">Toda partida empieza en la tienda.</h1>
           <p>Reserva cartas, juegos y snacks online, recógelos en tienda y gana 100 CHIKACOINS por cada euro que gastes.</p>
         </div>
@@ -19,12 +25,6 @@ export function AuthLayout({ children }) {
           <div className="perk"><Coin size={32} label /><span><strong>1 € = 100 CC</strong><small>por cada compra</small></span></div>
           <div className="perk"><Icon name="store" size={22} className="red" /><span><strong>Recogida en tienda</strong><small>pagas al recoger</small></span></div>
         </div>
-        <svg className="auth-sigil" viewBox="0 0 400 400" aria-hidden="true">
-          <circle cx="200" cy="200" r="190" />
-          <circle cx="200" cy="200" r="150" />
-          <path d="M200 10 365 105v190L200 390 35 295V105Z" />
-          <path d="M200 50 330 290H70Z" />
-        </svg>
       </section>
 
       <section className="auth-side">
