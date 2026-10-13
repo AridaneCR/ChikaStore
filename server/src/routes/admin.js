@@ -31,6 +31,7 @@ function productPayload(body) {
   for (const k of ['name', 'description', 'category', 'imageUrl', 'active']) {
     if (body[k] !== undefined) data[k] = body[k];
   }
+  if (body.coinsEnabled !== undefined) data.coinsEnabled = Boolean(body.coinsEnabled);
   // Código de barras: '' o null lo quita
   if (body.barcode !== undefined) data.barcode = body.barcode === '' || body.barcode === null ? undefined : body.barcode;
   if (body.tags !== undefined) {
@@ -302,7 +303,11 @@ router.post('/users/:id/topup', async (req, res) => {
   const field = currency === 'EUR' ? 'balanceEurCents' : 'balanceCoins';
   const cond = amount < 0 ? { [field]: { $gte: -amount } } : {};
   const user = await User.findOneAndUpdate({ _id: req.params.id, ...cond }, { $inc: { [field]: amount } }, { new: true });
-  if (!user) throw new HttpError(400, 'Usuario no encontrado o saldo insuficiente');
+  if (!user) {
+    const exists = await User.exists({ _id: req.params.id });
+    if (!exists) throw new HttpError(404, 'Usuario no encontrado');
+    throw new HttpError(400, currency === 'EUR' ? 'No tiene tanto saldo en € para quitar' : 'No tiene tantas CHIKACOINS para quitar');
+  }
 
   await Movement.create({
     user: user._id, currency, amount, type: amount > 0 ? 'recarga' : 'ajuste', by: req.user._id, note: note || '',

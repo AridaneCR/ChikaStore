@@ -1,7 +1,7 @@
 import CardArt from './CardArt';
 import Icon, { Coin } from './Icon';
 import { useCart } from '../context/CartContext';
-import { formatCoins, formatEur } from '../utils/format';
+import { acceptsCoins, formatCoins, formatEur } from '../utils/format';
 
 export default function ProductCard({ product, onAdd, preview = false }) {
   const { isFav, toggleFav } = useCart();
@@ -35,8 +35,12 @@ export default function ProductCard({ product, onAdd, preview = false }) {
         {product.description && <p className="product-desc">{product.description}</p>}
         <div className="product-price">
           <strong>{formatEur(product.priceEurCents)}</strong>
-          <span className="sep" />
-          <span className="cc">{formatCoins(product.priceCoins)} <Coin size={12} /></span>
+          {acceptsCoins(product) ? (
+            <>
+              <span className="sep" />
+              <span className="cc">{formatCoins(product.priceCoins)} <Coin size={12} /></span>
+            </>
+          ) : <span className="only-eur">Solo €</span>}
         </div>
         {product.stock > 0 && product.stock <= 5 && <span className="low-stock">¡Solo quedan {product.stock}!</span>}
       </div>

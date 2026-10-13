@@ -80,7 +80,8 @@ function UserEditor({ id, onSaved }) {
   const { user: me, refresh } = useAuth();
   const [data, setData] = useState(null);
   const [f, setF] = useState(null);
-  const [topup, setTopup] = useState({ currency: 'EUR', amount: '', note: '' });
+  // mode: 'add' suma al saldo, 'remove' lo descuenta (la cantidad siempre se escribe en positivo)
+  const [topup, setTopup] = useState({ mode: 'add', currency: 'EUR', amount: '', note: '' });
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
@@ -112,18 +113,31 @@ function UserEditor({ id, onSaved }) {
     } catch (err) { toast(err.message, 'bad'); } finally { setBusy(false); }
   };
 
+  const isEur = topup.currency === 'EUR';
+  const removing = topup.mode === 'remove';
+  const current = isEur ? data.user.balanceEurCents : data.user.balanceCoins;
+  const fmtBal = (v) => (isEur ? formatEur(v) : `${formatCoins(v)} CC`);
+  const raw = String(topup.amount).replace(/^[-+]/, '');
+  const parsed = raw === '' ? 0 : isEur ? eurosToCents(raw) : Math.round(Number(raw.replace(/\./g, '')));
+  const qty = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  const after_ = removing ? current - qty : current + qty;
+
   const doTopup = async (e) => {
     e.preventDefault();
-    const amount = topup.currency === 'EUR' ? eurosToCents(topup.amount) : Math.round(Number(topup.amount));
-    if (!amount) {
+    if (!qty) {
       toast('Cantidad no válida', 'bad');
       return;
     }
+    if (removing && qty > current) {
+      toast(`Solo tiene ${fmtBal(current)}: no se puede quitar más`, 'bad');
+      return;
+    }
+    const amount = removing ? -qty : qty;
     setBusy(true);
     try {
       await api(`/admin/users/${id}/topup`, { method: 'POST', body: { currency: topup.currency, amount, note: topup.note } });
       setTopup({ ...topup, amount: '', note: '' });
-      await after(amount > 0 ? 'Saldo recargado' : 'Saldo descontado');
+      await after(removing ? `${fmtBal(qty)} quitados del saldo` : `${fmtBal(qty)} añadidos al saldo`);
     } catch (err) { toast(err.message, 'bad'); } finally { setBusy(false); }
   };
 
@@ -153,6 +167,10 @@ function UserEditor({ id, onSaved }) {
           <div><span className="stat-label">CHIKACOINS</span><strong className="stat-value tone-cc"><Coin size={18} /> {formatCoins(data.user.balanceCoins)}</strong></div>
           <div><span className="stat-label">Saldo en euros</span><strong className="stat-value">{formatEur(data.user.balanceEurCents)}</strong></div>
         </div>
+        <div className="seg seg-full topup-mode" role="radiogroup" aria-label="Operación">
+          <button type="button" role="radio" aria-checked={!removing} className={!removing ? 'on' : ''} onClick={() => setTopup({ ...topup, mode: 'add' })}>+ Añadir saldo</button>
+          <button type="button" role="radio" aria-checked={removing} className={removing ? 'on on-remove' : ''} onClick={() => setTopup({ ...topup, mode: 'remove' })}>− Quitar saldo</button>
+        </div>
         <div className="form-3">
           <label>Moneda
             <select value={topup.currency} onChange={(e) => setTopup({ ...topup, currency: e.target.value })}>
@@ -160,13 +178,20 @@ function UserEditor({ id, onSaved }) {
               <option value="COINS">CHIKACOINS</option>
             </select>
           </label>
-          <label>Cantidad
-            <input required inputMode="decimal" value={topup.amount} onChange={(e) => setTopup({ ...topup, amount: e.target.value })} placeholder={topup.currency === 'EUR' ? '20,00 (o -5,00 para restar)' : '500 (o -100 para restar)'} />
+          <label>{removing ? 'Cantidad a quitar' : 'Cantidad a añadir'}
+            <input required inputMode="decimal" value={topup.amount} onChange={(e) => setTopup({ ...topup, amount: e.target.value })} placeholder={isEur ? '5,00' : '100'} />
           </label>
-          <label>Nota<input value={topup.note} onChange={(e) => setTopup({ ...topup, note: e.target.value })} placeholder="Pago en efectivo…" /></label>
+          <label>Nota<input value={topup.note} onChange={(e) => setTopup({ ...topup, note: e.target.value })} placeholder={removing ? 'Corrección de una carga…' : 'Pago en efectivo…'} /></label>
         </div>
+        {qty > 0 && (
+          <p className={`topup-preview${after_ < 0 ? ' neg' : ''}`}>
+            {fmtBal(current)} {removing ? '−' : '+'} {fmtBal(qty)} = <strong>{after_ < 0 ? 'no tiene saldo suficiente' : fmtBal(after_)}</strong>
+          </p>
+        )}
         <div className="form-actions">
-          <button className="btn btn-dark" disabled={busy}>Aplicar al saldo</button>
+          <button className={`btn ${removing ? 'btn-primary' : 'btn-dark'}`} disabled={busy || (removing && qty > current)}>
+            {removing ? 'Quitar del saldo' : 'Añadir al saldo'}
+          </button>
         </div>
       </form>
 

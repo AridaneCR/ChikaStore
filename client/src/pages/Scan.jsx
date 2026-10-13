@@ -5,7 +5,7 @@ import Icon, { Coin } from '../components/Icon';
 import Scanner from '../components/Scanner';
 import { toast } from '../components/ui';
 import { useCart } from '../context/CartContext';
-import { formatCoins, formatEur } from '../utils/format';
+import { acceptsCoins, formatCoins, formatEur } from '../utils/format';
 
 // Escanear en la tienda: cada código leído busca el producto y lo mete en el carrito.
 export default function Scan() {
@@ -75,7 +75,7 @@ export default function Scan() {
               <div className="scan-info">
                 <strong>{last.product.name}</strong>
                 <small>
-                  {formatEur(last.product.priceEurCents)} · {formatCoins(last.product.priceCoins)} <Coin size={10} />
+                  {formatEur(last.product.priceEurCents)}{acceptsCoins(last.product) ? <> · {formatCoins(last.product.priceCoins)} <Coin size={10} /></> : ' · Solo €'}
                   {last.soldOut && <span className="badge badge-bad"> Agotado</span>}
                 </small>
               </div>

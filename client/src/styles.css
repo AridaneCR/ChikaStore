@@ -123,6 +123,24 @@ button { font: inherit; color: inherit; }
 .field { margin: 16px 0 8px; }
 .label-hint { font-weight: 400; color: var(--muted); }
 .label-cc { color: var(--cc) !important; }
+.switch-row { display: flex !important; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-2); cursor: pointer; }
+.switch-row > span { display: grid; gap: 2px; }
+.switch-row strong { font-size: 0.9rem; }
+.switch-row small { font-weight: 500; color: var(--ink-2); font-size: 0.8rem; }
+.switch { appearance: none; -webkit-appearance: none; flex: none; width: 46px !important; height: 26px; padding: 0 !important; margin: 0; border: 0 !important; border-radius: 999px !important; background: #cfcfcf !important; position: relative; cursor: pointer; transition: background 0.15s; }
+.switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); transition: transform 0.15s; }
+.switch:checked { background: var(--cc) !important; }
+.switch:checked::after { transform: translateX(20px); }
+.switch:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.form-2 > .field { margin: 0; align-content: start; }
+.coins-off { display: flex; align-items: center; box-sizing: border-box; height: 44px; padding: 0 12px; border: 1px dashed var(--line-2); border-radius: var(--radius-sm); color: var(--muted); font-weight: 500; font-size: 0.85rem; }
+.only-eur { font-size: 0.72rem; font-weight: 700; color: var(--muted); background: var(--surface-2); border-radius: 999px; padding: 2px 8px; }
+.pay-option.disabled { cursor: not-allowed; opacity: 0.6; background: var(--surface-2); }
+.pay-option.disabled:hover { border-color: var(--line); }
+.topup-mode button { flex: 1; color: var(--ink-2); font-weight: 500; }
+.seg.topup-mode .on-remove { background: var(--red); color: #fff; }
+.topup-preview { margin: 0; font-size: 0.88rem; color: var(--ink-2); }
+.topup-preview.neg strong { color: var(--bad); }
 .form-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .form-3 { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 14px; }
 .form-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }

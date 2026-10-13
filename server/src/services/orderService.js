@@ -83,6 +83,9 @@ async function buildLines(rawItems, currency) {
   return products.map((product) => {
     const quantity = qtyById.get(String(product._id));
     if (quantity > MAX_QTY_PER_ITEM) throw new HttpError(400, `Máximo ${MAX_QTY_PER_ITEM} unidades por producto`);
+    if (currency === 'COINS' && product.coinsEnabled === false) {
+      throw new HttpError(400, `"${product.name}" no se puede pagar con CHIKACOINS. Quítalo del carrito o paga en euros.`);
+    }
     const unitPrice = currency === 'COINS' ? product.priceCoins : product.priceEurCents;
     return { product, quantity, unitPrice };
   });

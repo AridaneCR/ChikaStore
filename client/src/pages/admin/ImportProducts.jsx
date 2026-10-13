@@ -6,8 +6,8 @@ import { formatCoins, formatEur } from '../../utils/format';
 import { downloadBlob, readSpreadsheet, writeXlsx } from '../../utils/spreadsheet';
 
 // Columnas de la plantilla (las mismas que se exportan, para poder editar y volver a importar)
-export const IMPORT_HEADERS = ['Nombre *', 'Descripción', 'Categoría', 'Precio € *', 'Precio CC', 'Stock', 'Código de barras', 'Etiquetas', 'URL imagen', 'Visible'];
-const WIDTHS = [36, 24, 18, 12, 12, 10, 18, 22, 40, 10];
+export const IMPORT_HEADERS = ['Nombre *', 'Descripción', 'Categoría', 'Precio € *', 'Precio CC', 'Venta en CC', 'Stock', 'Código de barras', 'Etiquetas', 'URL imagen', 'Visible'];
+const WIDTHS = [36, 24, 18, 12, 12, 12, 10, 18, 22, 40, 10];
 
 const ACTION = {
   create: { label: 'Nuevo', tone: 'ok' },
@@ -23,7 +23,8 @@ export function exportProducts(products) {
     p.description || '',
     p.category,
     p.priceEurCents / 100,
-    p.priceCoins,
+    p.priceCoins ?? '',
+    p.coinsEnabled === false ? 'no' : 'sí',
     p.stock ?? '',
     p.barcode || '',
     (p.tags || []).join(', '),
@@ -141,7 +142,7 @@ export default function ImportProducts({ onClose, onDone }) {
                     <td><strong>{r.name || '—'}</strong>{r.category && <small className="sub">{r.category}</small>}</td>
                     <td><span className={`badge badge-${ACTION[r.action].tone}`}>{ACTION[r.action].label}</span></td>
                     <td className="num">{r.priceEurCents !== undefined ? formatEur(r.priceEurCents) : '—'}</td>
-                    <td className="num cc">{r.priceCoins !== undefined ? formatCoins(r.priceCoins) : '—'}</td>
+                    <td className="num cc">{r.coinsEnabled === false ? <span className="muted">Solo €</span> : r.priceCoins !== undefined ? formatCoins(r.priceCoins) : '—'}</td>
                     <td className="mono muted">{r.barcode || '—'}</td>
                     <td className="import-notes">
                       {r.errors.map((m) => <div key={m} className="neg">{m}</div>)}

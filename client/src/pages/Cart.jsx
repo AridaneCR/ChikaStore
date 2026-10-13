@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api';
 import CardArt from '../components/CardArt';
 import Icon, { Coin } from '../components/Icon';
@@ -6,12 +6,18 @@ import { CodePill, Empty, Modal, StatusBadge } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { navigate } from '../router';
-import { formatCoins, formatEur, formatPrice, orderNo } from '../utils/format';
+import { acceptsCoins, formatCoins, formatEur, formatPrice, orderNo } from '../utils/format';
 
 export default function Cart() {
   const { lines, setQty, clear, totals } = useCart();
   const { user, refresh } = useAuth();
-  const [currency, setCurrency] = useState('COINS');
+  // Productos que solo se venden en euros: si hay alguno, no se puede pagar con CHIKACOINS
+  const euroOnly = lines.filter((l) => !acceptsCoins(l.product));
+  const coinsAllowed = euroOnly.length === 0;
+  const [currency, setCurrency] = useState(coinsAllowed ? 'COINS' : 'EUR');
+  useEffect(() => {
+    if (!coinsAllowed && currency === 'COINS') setCurrency('EUR');
+  }, [coinsAllowed, currency]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(null);
@@ -62,7 +68,7 @@ export default function Cart() {
               <div className="cart-thumb"><CardArt product={product} size={26} /></div>
               <div className="cart-info">
                 <strong>{product.name}</strong>
-                <small>{formatEur(product.priceEurCents)} · {formatCoins(product.priceCoins)} CC / ud.</small>
+                <small>{formatEur(product.priceEurCents)}{acceptsCoins(product) ? ` · ${formatCoins(product.priceCoins)} CC` : ' · solo en €'} / ud.</small>
               </div>
               <div className="stepper">
                 <button onClick={() => setQty(product._id, quantity - 1)} aria-label="Quitar uno">−</button>
@@ -79,12 +85,14 @@ export default function Cart() {
         <aside className="card checkout">
           <h2>¿Cómo quieres pagar?</h2>
 
-          <label className={`pay-option${coins ? ' selected' : ''}`}>
-            <input type="radio" name="cur" checked={coins} onChange={() => setCurrency('COINS')} />
+          <label className={`pay-option${coins ? ' selected' : ''}${coinsAllowed ? '' : ' disabled'}`}>
+            <input type="radio" name="cur" checked={coins} disabled={!coinsAllowed} onChange={() => setCurrency('COINS')} />
             <span className="pay-head"><Coin size={16} /> CHIKACOINS</span>
-            <span className="pay-total cc">{formatCoins(totals.coins)}</span>
+            <span className="pay-total cc">{coinsAllowed ? formatCoins(totals.coins) : '—'}</span>
             <small>
-              {user.balanceCoins >= totals.coins
+              {!coinsAllowed
+                ? <>No disponible: {euroOnly.map((l) => `«${l.product.name}»`).join(', ')} {euroOnly.length === 1 ? 'solo se vende' : 'solo se venden'} en euros.</>
+                : user.balanceCoins >= totals.coins
                 ? <>Se descuenta de tu saldo. El pedido queda <strong className="green">pagado</strong> al instante.</>
                 : <>No te llega el saldo: te faltan <strong>{formatCoins(totals.coins - user.balanceCoins)} CC</strong>.</>}
             </small>

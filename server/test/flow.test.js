@@ -303,3 +303,40 @@ test('login social: Google y Discord crean o vinculan la cuenta', async () => {
     delete process.env.DISCORD_CLIENT_SECRET;
   }
 });
+
+test('productos sin CHIKACOINS y quitar saldo desde el panel', async () => {
+  await User.create({ fullName: 'Admin 2', email: 'admin2@test.com', password: await bcrypt.hash('adminadmin', 10), role: 'admin' });
+  const admin = (await call('/auth/login', { method: 'POST', body: { identifier: 'admin2@test.com', password: 'adminadmin' } })).data.token;
+  const reg = await call('/admin/users', { method: 'POST', token: admin, body: { fullName: 'Leo', email: 'leo@test.com', password: 'clave1234', balanceEurCents: 2000, balanceCoins: 5000 } });
+  const leoId = reg.data.id;
+  const leo = (await call('/auth/login', { method: 'POST', body: { identifier: 'leo@test.com', password: 'clave1234' } })).data.token;
+
+  // Producto solo en euros (sin precio en CC)
+  const p = await call('/admin/products', { method: 'POST', token: admin, body: { name: 'Caja de sobres', priceEurCents: 1000, coinsEnabled: false, stock: 5 } });
+  assert.equal(p.status, 201);
+  assert.equal(p.data.coinsEnabled, false);
+  const pub = (await call('/products?q=Caja')).data.items[0];
+  assert.equal(pub.coinsEnabled, false);
+
+  const coinsOrder = await call('/orders', { method: 'POST', token: leo, body: { currency: 'COINS', items: [{ productId: p.data._id, quantity: 1 }] } });
+  assert.equal(coinsOrder.status, 400);
+  assert.match(coinsOrder.data.error, /no se puede pagar con CHIKACOINS/);
+  assert.equal((await call('/products?q=Caja')).data.items[0].stock, 5); // no reserva stock
+  assert.equal((await call('/orders', { method: 'POST', token: leo, body: { currency: 'EUR', items: [{ productId: p.data._id, quantity: 1 }] } })).status, 201);
+
+  // Se puede volver a activar
+  await call(`/admin/products/${p.data._id}`, { method: 'PATCH', token: admin, body: { coinsEnabled: true, priceCoins: 900 } });
+  assert.equal((await call('/orders', { method: 'POST', token: leo, body: { currency: 'COINS', items: [{ productId: p.data._id, quantity: 1 }] } })).status, 201);
+
+  // Quitar saldo: no puede dejarlo en negativo
+  const tooMuch = await call(`/admin/users/${leoId}/topup`, { method: 'POST', token: admin, body: { currency: 'COINS', amount: -99999 } });
+  assert.equal(tooMuch.status, 400);
+  assert.match(tooMuch.data.error, /CHIKACOINS/);
+  const coinsBefore = (await call('/auth/me', { token: leo })).data.user.balanceCoins;
+  const minus = await call(`/admin/users/${leoId}/topup`, { method: 'POST', token: admin, body: { currency: 'COINS', amount: -100, note: 'Error de carga' } });
+  assert.equal(minus.status, 200);
+  assert.equal(minus.data.balanceCoins, coinsBefore - 100);
+  const eur = await call(`/admin/users/${leoId}/topup`, { method: 'POST', token: admin, body: { currency: 'EUR', amount: -500 } });
+  assert.equal(eur.status, 200);
+  assert.equal(eur.data.balanceEurCents, 500); // 2000 - 1000 (pedido) - 500
+});

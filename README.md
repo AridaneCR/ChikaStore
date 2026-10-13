@@ -14,7 +14,7 @@ Tienda online de cartas, juegos y snacks con toques de rol (d20, cartas). Los cl
 | Recuperar contraseña | **¿Olvidaste tu contraseña?** envía un enlace por correo (Brevo) que caduca en 1 hora y sirve una sola vez. Al cambiarla se cierran las sesiones abiertas en otros dispositivos. |
 | Login social | **Google** y **Discord**. Si el correo ya tiene cuenta, se vincula a ella; si no, se crea. Los botones solo aparecen si sus variables están configuradas en el backend. |
 | Saldos | Cada usuario tiene saldo en **€** (prepago: lo carga el admin) y en **CHIKACOINS**. |
-| Precios | Cada producto tiene dos precios que elige el admin: en € y en CHIKACOINS. |
+| Precios | Cada producto tiene precio en € y, si el admin lo activa (interruptor **Venta con CHIKACOINS**), también en CHIKACOINS. Si un carrito tiene algún producto solo en €, ese pedido se paga en euros. |
 | Catálogo | 9 categorías fijas (Sobres, Fundas, Accesorios TCG, Bebidas, Snacks, Juegos de mesa, Dados, Merchandising, Otros) y etiquetas **Nuevo**, **Destacado** y **Oferta**, que alimentan las secciones de la portada. |
 | Pagar con CHIKACOINS | Se descuenta del saldo y el pedido queda **pagado** al momento. Si no hay saldo suficiente, no deja comprar. |
 | Pagar en € | Si el saldo en € cubre el total, se descuenta y queda **pagado**. Si no, queda **sin pagar** y se paga en la tienda (el admin lo marca como pagado). |
@@ -88,7 +88,7 @@ Las rutas usan `#/` (hash), así que el sitio estático funciona sin configurar 
 | GET/POST/PATCH/DELETE | `/api/admin/products` | admin |
 | GET/PATCH | `/api/admin/orders` (`status`, `items`, `adminNote`) | admin |
 | GET/POST/PATCH | `/api/admin/users` (alta con contraseña inicial; al editar, todo menos la contraseña) | admin |
-| POST | `/api/admin/users/:id/topup` `{ currency, amount, note }` | admin |
+| POST | `/api/admin/users/:id/topup` `{ currency, amount, note }` (negativo = quitar; nunca deja el saldo por debajo de 0) | admin |
 | GET | `/api/admin/overview?period=day\|month\|year` (tarjetas + gráfico del panel) · `/api/admin/stats` · `/api/admin/summary` | admin |
 | POST | `/api/admin/upload` (imagen → Cloudinary) | admin |
 

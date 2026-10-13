@@ -9,7 +9,7 @@ import { Modal, Spinner, toast } from '../../components/ui';
 import { barcodeSvg, isValidBarcode } from '../../utils/barcode';
 import { CATEGORIES, centsToEuros, eurosToCents, formatCoins, formatEur, TAGS } from '../../utils/format';
 
-const EMPTY = { name: '', description: '', category: 'Sobres', tags: [], imageUrl: '', barcode: '', priceEur: '', priceCoins: '', stock: '', active: true };
+const EMPTY = { name: '', description: '', category: 'Sobres', tags: [], imageUrl: '', barcode: '', priceEur: '', coinsEnabled: true, priceCoins: '', stock: '', active: true };
 
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -28,7 +28,7 @@ function printLabels(products) {
   const labels = withCode.map((p) => `
     <div class="label">
       <div class="name">${esc(p.name)}</div>
-      <div class="price">${esc(formatEur(p.priceEurCents))} · ${esc(formatCoins(p.priceCoins))} CC</div>
+      <div class="price">${esc(formatEur(p.priceEurCents))}${p.coinsEnabled !== false ? ` · ${esc(formatCoins(p.priceCoins))} CC` : ''}</div>
       ${barcodeSvg(p.barcode, { height: 50 }) || `<div class="raw">${esc(p.barcode)}</div>`}
     </div>`).join('');
   win.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Etiquetas ChikakuShop</title>
@@ -52,7 +52,8 @@ const toForm = (p) => ({
   tags: p.tags || [],
   barcode: p.barcode || '',
   priceEur: centsToEuros(p.priceEurCents),
-  priceCoins: String(p.priceCoins),
+  coinsEnabled: p.coinsEnabled !== false,
+  priceCoins: p.coinsEnabled === false && !p.priceCoins ? '' : String(p.priceCoins ?? ''),
   stock: p.stock ?? '',
 });
 
@@ -143,7 +144,9 @@ export default function AdminProducts() {
       imageUrl: f.imageUrl,
       barcode: f.barcode.trim(),
       priceEurCents: eurosToCents(f.priceEur),
-      priceCoins: Number(String(f.priceCoins).replace(/\./g, '')),
+      coinsEnabled: f.coinsEnabled,
+      // Desactivado: se guarda el precio que hubiera (o 0) por si se vuelve a activar
+      priceCoins: Number(String(f.priceCoins).replace(/\./g, '')) || 0,
       stock: f.stock === '' ? null : Number(f.stock),
       active: f.active,
     };
@@ -165,7 +168,7 @@ export default function AdminProducts() {
       <div className="admin-head" ref={formRef}>
         <div>
           <h1 className="page-title">{editing ? 'Editar producto' : 'Nuevo producto'}</h1>
-          <p className="muted">Define los dos precios: en euros y en CHIKACOINS.</p>
+          <p className="muted">Define el precio en euros y, si quieres, también en CHIKACOINS.</p>
         </div>
       </div>
 
@@ -180,14 +183,25 @@ export default function AdminProducts() {
             </label>
             <label>Stock<input type="number" min="0" step="1" value={f.stock} onChange={set('stock')} placeholder="Vacío = ilimitado" /></label>
           </div>
+          <label className="switch-row">
+            <span>
+              <strong>Venta con CHIKACOINS</strong>
+              <small>{f.coinsEnabled ? 'Se puede comprar en euros o en CHIKACOINS' : 'Solo se puede comprar en euros'}</small>
+            </span>
+            <input type="checkbox" role="switch" className="switch" checked={f.coinsEnabled} onChange={set('coinsEnabled')} aria-label="Se puede comprar con CHIKACOINS" />
+          </label>
           <div className="form-2">
             <label>Precio en euros<input required inputMode="decimal" value={f.priceEur} onChange={set('priceEur')} placeholder="14,90" /></label>
-            <label className="label-cc">Precio en CHIKACOINS
-              <span className="input-with-btn">
-                <input className="input-cc" required inputMode="numeric" value={f.priceCoins} onChange={set('priceCoins')} placeholder="1490" />
-                <button type="button" className="btn btn-light btn-sm" onClick={() => setF({ ...f, priceCoins: String(eurosToCents(f.priceEur || 0) || '') })} title="Euros × 100">€ × 100</button>
-              </span>
-            </label>
+            {f.coinsEnabled ? (
+              <label className="label-cc">Precio en CHIKACOINS
+                <span className="input-with-btn">
+                  <input className="input-cc" required inputMode="numeric" value={f.priceCoins} onChange={set('priceCoins')} placeholder="1490" />
+                  <button type="button" className="btn btn-light btn-sm" onClick={() => setF({ ...f, priceCoins: String(eurosToCents(f.priceEur || 0) || '') })} title="Euros × 100">€ × 100</button>
+                </span>
+              </label>
+            ) : (
+              <div className="field"><span>Precio en CHIKACOINS</span><span className="coins-off">No se vende con CHIKACOINS</span></div>
+            )}
           </div>
           <label>Descripción corta<input value={f.description} onChange={set('description')} maxLength={300} placeholder="7 dados" /></label>
 
@@ -263,7 +277,7 @@ export default function AdminProducts() {
                     <td className="muted">{p.category}</td>
                     <td className="mono muted">{p.barcode || '—'}</td>
                     <td className="num"><strong>{formatEur(p.priceEurCents)}</strong></td>
-                    <td className="num cc"><strong>{formatCoins(p.priceCoins)}</strong></td>
+                    <td className="num cc">{p.coinsEnabled !== false ? <strong>{formatCoins(p.priceCoins)}</strong> : <span className="muted" title="Solo en euros">—</span>}</td>
                     <td className="num">{p.stock ?? '∞'}</td>
                     <td className="num">
                       <div className="row-actions end">

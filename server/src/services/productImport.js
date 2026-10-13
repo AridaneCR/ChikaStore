@@ -23,6 +23,7 @@ const COLUMNS = {
   category: ['categoria', 'category'],
   priceEur: ['precio €', 'precio eur', 'precio euros', 'precio en euros', 'precio', 'euros', '€', 'price'],
   priceCoins: ['precio cc', 'precio chikacoins', 'precio en chikacoins', 'chikacoins', 'cc'],
+  coinsEnabled: ['venta en cc', 'compra con cc', 'acepta cc', 'venta en chikacoins', 'compra con chikacoins'],
   stock: ['stock', 'existencias', 'unidades'],
   barcode: ['codigo de barras', 'codigo', 'ean', 'barcode'],
   tags: ['etiquetas', 'tags'],
@@ -112,7 +113,10 @@ function parseRow(raw, map) {
   }
 
   const cc = get('priceCoins');
-  if (isEmpty(cc)) {
+  // "no" o "-" en el precio CC = no se vende con CHIKACOINS
+  const ccOff = !isEmpty(cc) && ['no', 'n', '-', '—', 'solo €', 'solo euros'].includes(strip(cc));
+  if (ccOff) data.coinsEnabled = false;
+  if (isEmpty(cc) || ccOff) {
     if (data.priceEurCents !== undefined) data.priceCoins = data.priceEurCents; // 1 € = 100 CC
   } else {
     const n = parseInteger(cc);
@@ -147,6 +151,13 @@ function parseRow(raw, map) {
     const url = String(img).trim();
     if (/^https?:\/\//i.test(url)) data.imageUrl = url;
     else warnings.push('La URL de la imagen no empieza por http(s): se ignora');
+  }
+
+  // Solo si el archivo trae la columna: así una hoja antigua no cambia lo que ya hay
+  if (map.coinsEnabled) {
+    const on = parseBool(get('coinsEnabled'));
+    if (on === null) errors.push(`Venta en CC debe ser "sí" o "no", no "${get('coinsEnabled')}"`);
+    else if (!ccOff) data.coinsEnabled = on;
   }
 
   const visible = parseBool(get('active'));
@@ -258,6 +269,7 @@ async function importProducts(rows, { dryRun = true } = {}) {
       ...r,
       priceEurCents: data?.priceEurCents,
       priceCoins: data?.priceCoins,
+      coinsEnabled: data?.coinsEnabled,
       category: data?.category,
       barcode: data?.barcode,
     })),

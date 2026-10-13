@@ -26,6 +26,9 @@ export const initials = (name = '') =>
 export const eurosToCents = (v) => Math.round(Number(String(v).replace(/[€\s]/g, '').replace(',', '.')) * 100);
 export const centsToEuros = (c) => ((c || 0) / 100).toFixed(2).replace('.', ',');
 
+// Productos antiguos no tienen el campo: se venden con CHIKACOINS salvo que se desactive
+export const acceptsCoins = (p) => p?.coinsEnabled !== false;
+
 export const CATEGORIES = ['Sobres', 'Fundas', 'Accesorios TCG', 'Bebidas', 'Snacks', 'Juegos de mesa', 'Dados', 'Merchandising', 'Otros'];
 export const TAGS = { nuevo: 'Nuevo', destacado: 'Destacado', oferta: 'Oferta' };
 

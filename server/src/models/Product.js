@@ -31,7 +31,9 @@ const productSchema = new mongoose.Schema(
     },
     // Los dos precios los elige el admin de forma independiente
     priceEurCents: { type: Number, required: true, min: 0 },
-    priceCoins: { type: Number, required: true, min: 0 },
+    // Si está desactivado, el producto solo se vende en euros (se ignora priceCoins)
+    coinsEnabled: { type: Boolean, default: true },
+    priceCoins: { type: Number, default: 0, min: 0 },
     // null = sin control de stock
     stock: { type: Number, default: null, min: 0 },
     active: { type: Boolean, default: true },
