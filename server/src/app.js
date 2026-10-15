@@ -40,7 +40,7 @@ function createApp() {
     if (err.name === 'CastError') return res.status(400).json({ error: 'Dato no válido' });
     if (err.code === 11000) {
       const field = Object.keys(err.keyPattern || {})[0];
-      if (field === 'barcode') return res.status(409).json({ error: 'Ya hay otro producto con ese código de barras' });
+      if (field === 'barcode' || field === 'extraBarcodes') return res.status(409).json({ error: 'Ya hay otro producto con ese código de barras' });
       const names = { email: 'correo electrónico' };
       return res.status(409).json({ error: `Ya existe una cuenta con ese ${names[field] || field}` });
     }

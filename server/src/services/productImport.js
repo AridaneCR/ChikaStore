@@ -26,6 +26,7 @@ const COLUMNS = {
   coinsEnabled: ['venta en cc', 'compra con cc', 'acepta cc', 'venta en chikacoins', 'compra con chikacoins'],
   stock: ['stock', 'existencias', 'unidades'],
   barcode: ['codigo de barras', 'codigo', 'ean', 'barcode'],
+  extraBarcodes: ['codigos adicionales', 'otros codigos', 'codigos extra', 'mas codigos'],
   tags: ['etiquetas', 'tags'],
   imageUrl: ['url imagen', 'imagen', 'url de la imagen', 'foto', 'image'],
   active: ['visible', 'activo', 'visible en la tienda'],
@@ -132,6 +133,15 @@ function parseRow(raw, map) {
     else data.stock = n;
   }
 
+  // Códigos adicionales separados por comas, espacios o punto y coma (solo si hay columna)
+  if (map.extraBarcodes) {
+    const raw = get('extraBarcodes');
+    const list = isEmpty(raw) ? [] : String(raw).split(/[,;\s]+/).map(barcodeText).filter(Boolean);
+    const bad = list.filter((c) => !isValidBarcode(c));
+    if (bad.length) errors.push(`Código adicional no válido: ${bad.join(', ')}`);
+    else data.extraBarcodes = [...new Set(list)];
+  }
+
   const code = barcodeText(get('barcode'));
   if (code) {
     if (!isValidBarcode(code)) errors.push(`Código de barras no válido: "${code}"`);
@@ -177,11 +187,11 @@ async function importProducts(rows, { dryRun = true } = {}) {
   }
 
   // Productos existentes para emparejar por código y por nombre
-  const existing = await Product.find({}, { name: 1, barcode: 1 }).lean();
+  const existing = await Product.find({}, { name: 1, barcode: 1, extraBarcodes: 1 }).lean();
   const byBarcode = new Map();
   const byName = new Map();
   for (const p of existing) {
-    if (p.barcode) byBarcode.set(p.barcode, p);
+    for (const c of [p.barcode, ...(p.extraBarcodes || [])]) if (c) byBarcode.set(c, p);
     byName.set(strip(p.name), p);
   }
 
@@ -212,11 +222,23 @@ async function importProducts(rows, { dryRun = true } = {}) {
       seenNames.set(key, rowNumber);
     }
 
-    // El código no puede pertenecer a OTRO producto distinto del que se actualiza
-    if (data.barcode && !errors.length) {
-      const owner = barcodeVariants(data.barcode).map((c) => byBarcode.get(c)).find(Boolean);
-      if (owner && match && String(owner._id) !== String(match._id)) {
-        errors.push(`El código ${data.barcode} ya es de "${owner.name}"`);
+    // Los códigos adicionales tampoco pueden repetirse en el archivo
+    if (data.extraBarcodes) {
+      if (data.barcode) data.extraBarcodes = data.extraBarcodes.filter((c) => c !== data.barcode);
+      for (const c of data.extraBarcodes) {
+        if (seenCodes.has(c)) errors.push(`Código ${c} repetido en el archivo (fila ${seenCodes.get(c)})`);
+        seenCodes.set(c, rowNumber);
+      }
+    }
+
+    // Ningún código puede pertenecer a OTRO producto distinto del que se actualiza
+    if (!errors.length) {
+      for (const c of [data.barcode, ...(data.extraBarcodes || [])].filter(Boolean)) {
+        const owner = barcodeVariants(c).map((v) => byBarcode.get(v)).find(Boolean);
+        if (owner && (!match || String(owner._id) !== String(match._id))) {
+          errors.push(`El código ${c} ya es de "${owner.name}"`);
+          break;
+        }
       }
     }
 
@@ -272,6 +294,7 @@ async function importProducts(rows, { dryRun = true } = {}) {
       coinsEnabled: data?.coinsEnabled,
       category: data?.category,
       barcode: data?.barcode,
+      extraBarcodes: data?.extraBarcodes,
     })),
   };
 }

@@ -41,7 +41,9 @@ router.get('/categories', (req, res) => {
 // Buscar un producto por su código de barras (lo usa el escáner del móvil)
 router.get('/barcode/:code', async (req, res) => {
   const variants = barcodeVariants(req.params.code);
-  const product = variants.length ? await Product.findOne({ barcode: { $in: variants }, active: true }).lean() : null;
+  const product = variants.length
+    ? await Product.findOne({ $or: [{ barcode: { $in: variants } }, { extraBarcodes: { $in: variants } }], active: true }).lean()
+    : null;
   if (!product) return res.status(404).json({ error: 'No hay ningún producto con ese código' });
   return res.json(product);
 });

@@ -21,7 +21,7 @@ Tienda online de cartas, juegos y snacks con toques de rol (d20, cartas). Los cl
 | Recompensa | 1 € = 100 CHIKACOINS. Se dan al **pagar** un pedido en euros, no al hacerlo. Las compras con CHIKACOINS no generan CHIKACOINS. |
 | Nº de pedido | Secuencial y único (1, 2, 3…). |
 | Código de pedido | `AÑO-XXXX` con 4 dígitos aleatorios (ej. `2026-0427`), único. Si se usan las 10.000 combinaciones del año, pasa a 5 dígitos (`2026-04271`). |
-| Código de barras | Cada producto puede tener su EAN del fabricante o un EAN-13 interno que genera la tienda (empieza por 2). El admin puede leerlo con la cámara, generar los que falten e imprimir etiquetas. |
+| Código de barras | Cada producto puede tener su EAN del fabricante o un EAN-13 interno que genera la tienda (empieza por 2). El admin puede leerlo con la cámara, generar los que falten e imprimir etiquetas. Además admite **códigos adicionales** que llevan al mismo producto (p. ej. una bebida que engloba todos los sabores). Un código no puede estar en dos productos. |
 | Escanear | En el móvil, **Escanear** abre la cámara: cada código leído busca el producto y lo añade al carrito. Usa el lector del navegador (Chrome/Android) o ZXing (iPhone). Necesita HTTPS. |
 | Importar / exportar | En **Productos → Importar Excel** se sube un `.xlsx` o `.csv` (plantilla en `client/public/plantilla-productos.xlsx`). Primero se ve una vista previa fila a fila; luego crea o actualiza (por código de barras o por nombre). **Exportar Excel** descarga todos los productos con las mismas columnas para editarlos y volver a importarlos. |
 | Cancelar | Devuelve el stock. Si el pedido estaba pagado, devuelve el importe al saldo del cliente y le quita las CHIKACOINS que ganó. |

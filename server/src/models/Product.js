@@ -29,6 +29,13 @@ const productSchema = new mongoose.Schema(
       set: normalizeBarcode,
       validate: { validator: (v) => v == null || isValidBarcode(v), message: 'Código de barras no válido' },
     },
+    // Más códigos que llevan al mismo producto (p. ej. cada sabor de una bebida)
+    extraBarcodes: {
+      type: [String],
+      default: [],
+      set: (list) => [...new Set((list || []).map(normalizeBarcode).filter(Boolean))],
+      validate: { validator: (list) => list.every(isValidBarcode), message: 'Algún código adicional no es válido' },
+    },
     // Los dos precios los elige el admin de forma independiente
     priceEurCents: { type: Number, required: true, min: 0 },
     // Si está desactivado, el producto solo se vende en euros (se ignora priceCoins)
@@ -44,6 +51,7 @@ const productSchema = new mongoose.Schema(
 productSchema.index({ active: 1, category: 1 });
 productSchema.index({ active: 1, tags: 1 });
 productSchema.index({ barcode: 1 }, { unique: true, partialFilterExpression: { barcode: { $type: 'string' } } });
+productSchema.index({ extraBarcodes: 1 }, { unique: true, partialFilterExpression: { 'extraBarcodes.0': { $exists: true } } });
 
 module.exports = mongoose.model('Product', productSchema);
 module.exports.CATEGORIES = CATEGORIES;

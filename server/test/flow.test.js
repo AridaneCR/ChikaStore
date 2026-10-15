@@ -340,3 +340,38 @@ test('productos sin CHIKACOINS y quitar saldo desde el panel', async () => {
   assert.equal(eur.status, 200);
   assert.equal(eur.data.balanceEurCents, 500); // 2000 - 1000 (pedido) - 500
 });
+
+test('varios códigos de barras llevan al mismo producto', async () => {
+  await User.create({ fullName: 'Admin 3', email: 'admin3@test.com', password: await bcrypt.hash('adminadmin', 10), role: 'admin' });
+  const admin = (await call('/auth/login', { method: 'POST', body: { identifier: 'admin3@test.com', password: 'adminadmin' } })).data.token;
+
+  // Bebida que engloba todos los sabores: un código principal y dos adicionales
+  const drink = await call('/admin/products', { method: 'POST', token: admin, body: { name: 'Refresco 330 ml (todos los sabores)', priceEurCents: 150, barcode: '5449000000996', extraBarcodes: ['5449000131805', ' 5449000214911 ', '5449000131805'] } });
+  assert.equal(drink.status, 201);
+  assert.deepEqual(drink.data.extraBarcodes, ['5449000131805', '5449000214911']);
+
+  // Cualquier código lleva al mismo producto
+  for (const code of ['5449000000996', '5449000131805', '5449000214911']) {
+    const r = await call(`/products/barcode/${code}`);
+    assert.equal(r.status, 200);
+    assert.equal(r.data._id, drink.data._id);
+  }
+  // Búsqueda en el panel por un código adicional
+  assert.equal((await call('/admin/products?q=5449000214911', { token: admin })).data.length, 1);
+
+  // Código no válido → 400; código de otro producto → 409
+  assert.equal((await call(`/admin/products/${drink.data._id}`, { method: 'PATCH', token: admin, body: { extraBarcodes: ['5449000131806'] } })).status, 400); // dígito de control mal
+  const other = await call('/admin/products', { method: 'POST', token: admin, body: { name: 'Agua', priceEurCents: 100, extraBarcodes: ['5449000131805'] } });
+  assert.equal(other.status, 409);
+  assert.match(other.data.error, /Refresco/);
+  const other2 = await call('/admin/products', { method: 'POST', token: admin, body: { name: 'Agua', priceEurCents: 100, barcode: '5449000214911' } });
+  assert.equal(other2.status, 409);
+
+  // Quitar un código adicional
+  const upd = await call(`/admin/products/${drink.data._id}`, { method: 'PATCH', token: admin, body: { extraBarcodes: ['5449000131805'] } });
+  assert.equal(upd.status, 200);
+  assert.deepEqual(upd.data.extraBarcodes, ['5449000131805']);
+  assert.equal((await call('/products/barcode/5449000214911')).status, 404);
+  // Y ya se puede usar en otro producto
+  assert.equal((await call('/admin/products', { method: 'POST', token: admin, body: { name: 'Agua', priceEurCents: 100, extraBarcodes: ['5449000214911'] } })).status, 201);
+});

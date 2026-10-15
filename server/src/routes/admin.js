@@ -9,7 +9,7 @@ const Movement = require('../models/Movement');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { changeStatus, updateItems } = require('../services/orderService');
 const { HttpError } = require('../utils/money');
-const { randomInternalEan13 } = require('../utils/barcode');
+const { randomInternalEan13, normalizeBarcode, isValidBarcode, barcodeVariants } = require('../utils/barcode');
 const { importProducts } = require('../services/productImport');
 
 const router = express.Router();
@@ -34,6 +34,14 @@ function productPayload(body) {
   if (body.coinsEnabled !== undefined) data.coinsEnabled = Boolean(body.coinsEnabled);
   // Código de barras: '' o null lo quita
   if (body.barcode !== undefined) data.barcode = body.barcode === '' || body.barcode === null ? undefined : body.barcode;
+  // Códigos adicionales (otros sabores/variantes que se venden como este producto)
+  if (body.extraBarcodes !== undefined) {
+    if (!Array.isArray(body.extraBarcodes)) throw new HttpError(400, 'Los códigos adicionales deben ser una lista');
+    const list = [...new Set(body.extraBarcodes.map(normalizeBarcode).filter(Boolean))];
+    const bad = list.find((c) => !isValidBarcode(c));
+    if (bad) throw new HttpError(400, `El código ${bad} no es válido`);
+    data.extraBarcodes = list;
+  }
   if (body.tags !== undefined) {
     if (!Array.isArray(body.tags) || body.tags.some((t) => !Product.TAGS.includes(t))) {
       throw new HttpError(400, 'Etiquetas no válidas');
@@ -63,15 +71,36 @@ router.get('/products', async (req, res) => {
   const filter = {};
   if (q) {
     const term = String(q).trim();
-    filter.$or = [{ name: { $regex: escapeRegex(term), $options: 'i' } }, { barcode: term.toUpperCase() }];
+    const codes = barcodeVariants(term);
+    filter.$or = [{ name: { $regex: escapeRegex(term), $options: 'i' } }, { barcode: { $in: codes } }, { extraBarcodes: { $in: codes } }];
   }
   if (category) filter.category = category;
   if (active === 'true' || active === 'false') filter.active = active === 'true';
   res.json(await Product.find(filter).sort({ name: 1 }).lean());
 });
 
+// Un código (o su variante UPC/EAN) no puede estar en dos productos, ni repetido en el mismo
+async function checkBarcodes(data, selfId) {
+  const main = data.barcode ? normalizeBarcode(data.barcode) : null;
+  if (data.extraBarcodes && main) data.extraBarcodes = data.extraBarcodes.filter((c) => c !== main);
+  const all = [main, ...(data.extraBarcodes || [])].filter(Boolean);
+  if (!all.length) return;
+  const variants = [...new Set(all.flatMap(barcodeVariants))];
+  const other = await Product.findOne(
+    { _id: { $ne: selfId }, $or: [{ barcode: { $in: variants } }, { extraBarcodes: { $in: variants } }] },
+    { name: 1, barcode: 1, extraBarcodes: 1 }
+  ).lean();
+  if (other) {
+    const taken = new Set([other.barcode, ...(other.extraBarcodes || [])].flatMap((c) => (c ? barcodeVariants(c) : [])));
+    const code = all.find((c) => barcodeVariants(c).some((v) => taken.has(v))) || all[0];
+    throw new HttpError(409, `El código ${code} ya está en "${other.name}"`);
+  }
+}
+
 router.post('/products', async (req, res) => {
-  const product = await Product.create(productPayload(req.body || {}));
+  const payload = productPayload(req.body || {});
+  await checkBarcodes(payload, null);
+  const product = await Product.create(payload);
   res.status(201).json(product);
 });
 
@@ -80,7 +109,7 @@ async function freeInternalBarcode() {
   for (let i = 0; i < 20; i += 1) {
     const code = randomInternalEan13();
     // eslint-disable-next-line no-await-in-loop
-    if (!(await Product.exists({ barcode: code }))) return code;
+    if (!(await Product.exists({ $or: [{ barcode: code }, { extraBarcodes: code }] }))) return code;
   }
   throw new HttpError(503, 'No se pudo generar un código, inténtalo de nuevo');
 }
@@ -109,6 +138,14 @@ router.post('/products/barcode/fill', async (req, res) => {
 
 router.patch('/products/:id', async (req, res) => {
   const payload = productPayload(req.body || {});
+  // Para comprobar duplicados hace falta el código principal aunque no venga en la petición
+  if (payload.extraBarcodes && !('barcode' in payload)) {
+    const current = await Product.findById(req.params.id, { barcode: 1 }).lean();
+    await checkBarcodes({ barcode: current?.barcode, extraBarcodes: payload.extraBarcodes }, req.params.id);
+    if (current?.barcode) payload.extraBarcodes = payload.extraBarcodes.filter((c) => c !== current.barcode);
+  } else {
+    await checkBarcodes(payload, req.params.id);
+  }
   const update = { ...payload };
   if ('barcode' in payload && payload.barcode === undefined) {
     delete update.barcode;

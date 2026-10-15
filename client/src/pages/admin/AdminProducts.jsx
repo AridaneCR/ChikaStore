@@ -9,7 +9,7 @@ import { Modal, Spinner, toast } from '../../components/ui';
 import { barcodeSvg, isValidBarcode } from '../../utils/barcode';
 import { CATEGORIES, centsToEuros, eurosToCents, formatCoins, formatEur, TAGS } from '../../utils/format';
 
-const EMPTY = { name: '', description: '', category: 'Sobres', tags: [], imageUrl: '', barcode: '', priceEur: '', coinsEnabled: true, priceCoins: '', stock: '', active: true };
+const EMPTY = { name: '', description: '', category: 'Sobres', tags: [], imageUrl: '', barcode: '', extraBarcodes: [], priceEur: '', coinsEnabled: true, priceCoins: '', stock: '', active: true };
 
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -51,6 +51,7 @@ const toForm = (p) => ({
   ...p,
   tags: p.tags || [],
   barcode: p.barcode || '',
+  extraBarcodes: p.extraBarcodes || [],
   priceEur: centsToEuros(p.priceEurCents),
   coinsEnabled: p.coinsEnabled !== false,
   priceCoins: p.coinsEnabled === false && !p.priceCoins ? '' : String(p.priceCoins ?? ''),
@@ -64,7 +65,9 @@ export default function AdminProducts() {
   const [f, setF] = useState(EMPTY);
   const [busy, setBusy] = useState(false);
   const [showUrl, setShowUrl] = useState(false);
+  // false | 'main' (código principal) | 'extra' (añadir códigos adicionales, sin cerrar la cámara)
   const [scanning, setScanning] = useState(false);
+  const [extraInput, setExtraInput] = useState('');
   const [importing, setImporting] = useState(false);
   const formRef = useRef(null);
 
@@ -97,6 +100,25 @@ export default function AdminProducts() {
     priceCoins: Number(f.priceCoins) || 0,
     stock: f.stock === '' ? null : Number(f.stock),
   };
+
+  // Añade un código adicional (se guarda al pulsar «Guardar producto»)
+  const addExtra = (raw, { fromScan = false } = {}) => {
+    const code = String(raw || '').replace(/[\s-]/g, '').toUpperCase();
+    if (!code) return;
+    if (!isValidBarcode(code)) {
+      toast(`El código ${code} no es válido`, 'bad');
+      return;
+    }
+    if (code === f.barcode.trim() || f.extraBarcodes.includes(code)) {
+      // Con la cámara es normal volver a leer la misma lata: no se avisa
+      if (!fromScan) toast(`El código ${code} ya está en este producto`, 'bad');
+      return;
+    }
+    setF((prev) => (prev.extraBarcodes.includes(code) ? prev : { ...prev, extraBarcodes: [...prev.extraBarcodes, code] }));
+    setExtraInput('');
+    toast(`Código ${code} añadido`);
+  };
+  const removeExtra = (code) => setF((prev) => ({ ...prev, extraBarcodes: prev.extraBarcodes.filter((c) => c !== code) }));
 
   const generateBarcode = async () => {
     try {
@@ -143,6 +165,7 @@ export default function AdminProducts() {
       tags: f.tags,
       imageUrl: f.imageUrl,
       barcode: f.barcode.trim(),
+      extraBarcodes: f.extraBarcodes,
       priceEurCents: eurosToCents(f.priceEur),
       coinsEnabled: f.coinsEnabled,
       // Desactivado: se guarda el precio que hubiera (o 0) por si se vuelve a activar
@@ -209,12 +232,41 @@ export default function AdminProducts() {
             <label>Código de barras
               <span className="input-with-btn">
                 <input value={f.barcode} onChange={set('barcode')} inputMode="numeric" placeholder="EAN del fabricante o pulsa Generar" className="mono" />
-                <button type="button" className="btn btn-light btn-sm" onClick={() => setScanning(true)} title="Leer con la cámara"><Icon name="camera" size={16} /> Escanear</button>
+                <button type="button" className="btn btn-light btn-sm" onClick={() => setScanning('main')} title="Leer con la cámara"><Icon name="camera" size={16} /> Escanear</button>
                 <button type="button" className="btn btn-light btn-sm" onClick={generateBarcode} title="Crear un código interno">Generar</button>
               </span>
             </label>
             {f.barcode && !isValidBarcode(f.barcode) && <small className="field-error">Este código no es válido (revisa los números).</small>}
             {f.barcode && isValidBarcode(f.barcode) && <Barcode value={f.barcode} height={40} className="barcode-preview" />}
+          </div>
+
+          <div className="extra-codes">
+            <div className="extra-codes-head">
+              <span>Códigos adicionales <small className="muted">· llevan a este mismo producto (p. ej. cada sabor)</small></span>
+            </div>
+            {f.extraBarcodes.length > 0 && (
+              <ul className="code-chips">
+                {f.extraBarcodes.map((c) => (
+                  <li key={c}>
+                    <span className="mono">{c}</span>
+                    <button type="button" onClick={() => removeExtra(c)} aria-label={`Quitar el código ${c}`}><Icon name="close" size={12} /></button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="input-with-btn">
+              <input
+                value={extraInput}
+                onChange={(e) => setExtraInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addExtra(extraInput); } }}
+                inputMode="numeric"
+                placeholder="Escribe o lee otro código"
+                className="mono"
+                aria-label="Código adicional"
+              />
+              <button type="button" className="btn btn-light btn-sm" onClick={() => addExtra(extraInput)} disabled={!extraInput.trim()}>+ Añadir</button>
+              <button type="button" className="btn btn-light btn-sm" onClick={() => setScanning('extra')} title="Leer varios con la cámara"><Icon name="camera" size={16} /> Escanear</button>
+            </div>
           </div>
 
           <fieldset className="checks">
@@ -275,7 +327,10 @@ export default function AdminProducts() {
                   <tr key={p._id} className={p.active ? '' : 'row-off'}>
                     <td><strong>{p.name}</strong>{!p.active && <span className="badge badge-muted"> Oculto</span>}</td>
                     <td className="muted">{p.category}</td>
-                    <td className="mono muted">{p.barcode || '—'}</td>
+                    <td className="mono muted">
+                      {p.barcode || (p.extraBarcodes?.length ? '' : '—')}
+                      {p.extraBarcodes?.length > 0 && <span className="badge badge-info codes-more" title={p.extraBarcodes.join('\n')}>+{p.extraBarcodes.length}</span>}
+                    </td>
                     <td className="num"><strong>{formatEur(p.priceEurCents)}</strong></td>
                     <td className="num cc">{p.coinsEnabled !== false ? <strong>{formatCoins(p.priceCoins)}</strong> : <span className="muted" title="Solo en euros">—</span>}</td>
                     <td className="num">{p.stock ?? '∞'}</td>
@@ -297,14 +352,25 @@ export default function AdminProducts() {
       {importing && <ImportProducts onClose={() => setImporting(false)} onDone={load} />}
 
       {scanning && (
-        <Modal title="Escanear código de barras" subtitle="Apunta la cámara al código del producto." onClose={() => setScanning(false)}>
+        <Modal
+          title={scanning === 'extra' ? 'Añadir códigos adicionales' : 'Escanear código de barras'}
+          subtitle={scanning === 'extra' ? 'Ve leyendo los códigos (un sabor detrás de otro). Cierra cuando termines.' : 'Apunta la cámara al código del producto.'}
+          onClose={() => setScanning(false)}
+        >
           <Scanner
             onDetect={(code) => {
+              if (scanning === 'extra') {
+                addExtra(code, { fromScan: true });
+                return;
+              }
               setF((prev) => ({ ...prev, barcode: code }));
               setScanning(false);
               toast(`Código leído: ${code}`);
             }}
           />
+          {scanning === 'extra' && f.extraBarcodes.length > 0 && (
+            <p className="muted small scan-count">{f.extraBarcodes.length} {f.extraBarcodes.length === 1 ? 'código adicional' : 'códigos adicionales'} en este producto</p>
+          )}
         </Modal>
       )}
     </>
