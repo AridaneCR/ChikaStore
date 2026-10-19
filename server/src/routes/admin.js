@@ -6,6 +6,7 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const Movement = require('../models/Movement');
+const { buildReport } = require('../services/report');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { changeStatus, updateItems } = require('../services/orderService');
 const { HttpError } = require('../utils/money');
@@ -368,6 +369,11 @@ const FORMATS = { day: '%Y-%m-%d', month: '%Y-%m', year: '%Y' };
 //   month → tarjetas del MES actual y gráfico por semanas (Sem 1…5)
 //   year  → tarjetas del AÑO actual y gráfico por meses
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+// Informe para exportar a PDF: ?period=day|week|month|year&date=AAAA-MM-DD
+router.get('/report', async (req, res) => {
+  res.json(await buildReport(String(req.query.period || 'month'), req.query.date));
+});
 
 router.get('/overview', async (req, res) => {
   const period = ['day', 'month', 'year'].includes(req.query.period) ? req.query.period : 'month';

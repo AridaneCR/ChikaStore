@@ -179,7 +179,8 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; accent-
 .seg button, .seg a { border: 0; background: transparent; padding: 8px 14px; border-radius: 9px; font-weight: 600; font-size: 0.88rem; cursor: pointer; color: var(--ink); text-align: center; }
 .seg .on { background: var(--black); color: #fff; }
 .seg-full { display: flex; background: #f1f1f1; border-color: transparent; }
-.seg-full a { flex: 1; color: var(--ink-2); font-weight: 500; }
+.seg-full a, .modal .seg-full button { flex: 1; color: var(--ink-2); font-weight: 500; }
+.modal .seg-full button.on { color: var(--ink); font-weight: 700; }
 .seg-full .on { background: var(--surface); color: var(--ink); font-weight: 700; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); }
 .pills { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 20px; }
 .pill { border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 9px 17px; font-weight: 600; font-size: 0.92rem; cursor: pointer; }

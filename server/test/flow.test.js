@@ -386,3 +386,21 @@ test('el historial del cliente incluye los ajustes de saldo del admin', async ()
   assert.equal(minus.note, 'Corrección');
   assert.equal(minus.by.fullName, 'Admin 3');
 });
+
+test('informe para PDF: pedidos y saldos del periodo', async () => {
+  const admin = (await call('/auth/login', { method: 'POST', body: { identifier: 'admin3@test.com', password: 'adminadmin' } })).data.token;
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date());
+  for (const period of ['day', 'week', 'month', 'year']) {
+    const r = await call(`/admin/report?period=${period}&date=${today}`, { token: admin });
+    assert.equal(r.status, 200);
+    assert.ok(r.data.orders.length > 0, `hay pedidos de hoy en ${period}`);
+    assert.ok(r.data.users.length > 0);
+    assert.ok(new Date(r.data.from) <= new Date() && new Date() < new Date(r.data.to));
+  }
+  // Un año sin actividad: sin pedidos, pero salen los usuarios con su saldo actual
+  const old = await call('/admin/report?period=year&date=2001-05-05', { token: admin });
+  assert.equal(old.data.orders.length, 0);
+  assert.equal(old.data.summary.orders, 0);
+  assert.ok(old.data.users.some((u) => u.balanceEurCents > 0));
+  assert.equal((await call('/admin/report?period=quincena', { token: admin })).status, 400);
+});

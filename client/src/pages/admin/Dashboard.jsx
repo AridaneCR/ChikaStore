@@ -4,6 +4,8 @@ import { Spinner, Stat } from '../../components/ui';
 import { formatCoins, formatEur } from '../../utils/format';
 import AdminOrders from './AdminOrders';
 import BarChart from './BarChart';
+import ReportPdf from './ReportPdf';
+import Icon from '../../components/Icon';
 
 const PERIODS = { day: 'Diario', month: 'Mensual', year: 'Anual' };
 
@@ -19,6 +21,7 @@ export default function Dashboard() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [tick, setTick] = useState(0);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     api(`/admin/overview?period=${period}`).then(setData).catch((e) => setError(e.message));
@@ -31,12 +34,16 @@ export default function Dashboard() {
           <h1 className="page-title">Resumen</h1>
           <p className="muted">Gasto de los clientes y pedidos · {data ? scopeLabel(period, data.today) : '…'}</p>
         </div>
-        <div className="seg" role="tablist" aria-label="Periodo">
-          {Object.entries(PERIODS).map(([k, v]) => (
-            <button key={k} role="tab" aria-selected={period === k} className={period === k ? 'on' : ''} onClick={() => setPeriod(k)}>{v}</button>
-          ))}
+        <div className="head-tools">
+          <div className="seg" role="tablist" aria-label="Periodo">
+            {Object.entries(PERIODS).map(([k, v]) => (
+              <button key={k} role="tab" aria-selected={period === k} className={period === k ? 'on' : ''} onClick={() => setPeriod(k)}>{v}</button>
+            ))}
+          </div>
+          <button type="button" className="btn btn-dark" onClick={() => setExporting(true)}><Icon name="printer" size={16} /> Exportar PDF</button>
         </div>
       </div>
+      {exporting && <ReportPdf onClose={() => setExporting(false)} />}
 
       {error && <div className="alert">{error}</div>}
       {!data ? <Spinner /> : (

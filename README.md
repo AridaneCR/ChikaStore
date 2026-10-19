@@ -90,6 +90,7 @@ Las rutas usan `#/` (hash), así que el sitio estático funciona sin configurar 
 | GET/POST/PATCH | `/api/admin/users` (alta con contraseña inicial; al editar, todo menos la contraseña) | admin |
 | POST | `/api/admin/users/:id/topup` `{ currency, amount, note }` (negativo = quitar; nunca deja el saldo por debajo de 0) | admin |
 | GET | `/api/admin/overview?period=day\|month\|year` (tarjetas + gráfico del panel) · `/api/admin/stats` · `/api/admin/summary` | admin |
+| GET | `/api/admin/report?period=day\|week\|month\|year&date=AAAA-MM-DD` (informe para exportar a PDF desde **Resumen → Exportar PDF**) | admin |
 | POST | `/api/admin/upload` (imagen → Cloudinary) | admin |
 
 ## Estructura
