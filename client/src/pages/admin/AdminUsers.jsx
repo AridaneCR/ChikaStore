@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, qs } from '../../api';
 import Icon, { Coin } from '../../components/Icon';
-import { CodePill, Empty, Modal, Spinner, StatusBadge, toast } from '../../components/ui';
+import { Empty, Modal, Spinner, StatusBadge, toast } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
-import { eurosToCents, formatCoins, formatDate, formatEur, formatPrice, initials, orderNo } from '../../utils/format';
+import { PAID_WITH, eurosToCents, formatCoins, formatDateTime, formatEur, formatPrice, initials, orderNo } from '../../utils/format';
 
 export default function AdminUsers() {
   const [q, setQ] = useState('');
@@ -195,26 +195,102 @@ function UserEditor({ id, onSaved }) {
         </div>
       </form>
 
-      <div className="card table-card">
-        <h3 className="pad">Últimos pedidos</h3>
-        <div className="table-wrap">
-          <table className="table">
-            <thead><tr><th>Pedido</th><th>Código</th><th>Fecha</th><th className="num">Total</th><th>Estado</th></tr></thead>
-            <tbody>
-              {data.orders.map((o) => (
-                <tr key={o._id}>
-                  <td><strong>{orderNo(o.orderNumber)}</strong></td>
-                  <td><CodePill code={o.code} /></td>
-                  <td className="muted">{formatDate(o.createdAt)}</td>
-                  <td className="num"><strong>{formatPrice(o.total, o.currency)}</strong></td>
-                  <td><StatusBadge status={o.status} /></td>
-                </tr>
-              ))}
-              {data.orders.length === 0 && <tr><td colSpan={5} className="muted center">Sin pedidos.</td></tr>}
-            </tbody>
-          </table>
+      <UserHistory orders={data.orders} movements={data.movements} />
+    </div>
+  );
+}
+
+/* ---------------------- Historial del cliente ---------------------- */
+
+const MOVE_LABEL = {
+  recarga: 'Saldo añadido',
+  compra: 'Pago con saldo',
+  recompensa: 'CHIKACOINS ganadas',
+  devolucion: 'Devolución',
+  ajuste: 'Ajuste de saldo',
+};
+
+const signed = (amount, currency) => {
+  const abs = Math.abs(amount);
+  const txt = currency === 'EUR' ? formatEur(abs) : `${formatCoins(abs)} CC`;
+  return `${amount < 0 ? '−' : '+'}${txt}`;
+};
+
+// Pedidos y movimientos de saldo juntos, del más reciente al más antiguo
+function buildHistory(orders = [], movements = []) {
+  const rows = [
+    ...orders.map((o) => ({ kind: 'order', id: `o${o._id}`, date: o.createdAt, order: o })),
+    ...movements.map((m) => ({ kind: 'move', id: `m${m._id}`, date: m.createdAt, move: m })),
+  ];
+  return rows.sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
+function UserHistory({ orders, movements }) {
+  const [filter, setFilter] = useState('all');
+  const [shown, setShown] = useState(30);
+  const all = buildHistory(orders, movements);
+  const rows = all.filter((r) => filter === 'all' || (filter === 'orders' ? r.kind === 'order' : r.kind === 'move'));
+  const counts = { all: all.length, orders: orders.length, moves: movements.length };
+
+  return (
+    <div className="card table-card">
+      <div className="history-head pad">
+        <h3>Historial del cliente</h3>
+        <div className="seg" role="tablist" aria-label="Filtrar historial">
+          {[['all', 'Todo'], ['orders', 'Pedidos'], ['moves', 'Saldo']].map(([k, label]) => (
+            <button key={k} type="button" role="tab" aria-selected={filter === k} className={filter === k ? 'on' : ''} onClick={() => { setFilter(k); setShown(30); }}>
+              {label} <small>{counts[k]}</small>
+            </button>
+          ))}
         </div>
       </div>
+      <div className="table-wrap">
+        <table className="table history-table">
+          <thead><tr><th>Fecha</th><th>Movimiento</th><th>Hecho por</th><th className="num">Importe</th><th>Estado / saldo</th></tr></thead>
+          <tbody>
+            {rows.slice(0, shown).map((r) => (r.kind === 'order' ? (
+              <tr key={r.id}>
+                <td className="muted nowrap">{formatDateTime(r.date)}</td>
+                <td>
+                  <span className="history-what"><span className="dot dot-order" />Pedido {orderNo(r.order.orderNumber)}</span>
+                  <small className="sub"><span className="mini-code">{r.order.code}</span> · {r.order.items?.length || 0} {r.order.items?.length === 1 ? 'producto' : 'productos'}{r.order.paidWith ? ` · pagado: ${PAID_WITH[r.order.paidWith] || r.order.paidWith}` : ''}</small>
+                </td>
+                <td className="muted">Cliente</td>
+                <td className="num"><strong>{formatPrice(r.order.total, r.order.currency)}</strong></td>
+                <td><StatusBadge status={r.order.status} /></td>
+              </tr>
+            ) : (
+              <tr key={r.id}>
+                <td className="muted nowrap">{formatDateTime(r.date)}</td>
+                <td>
+                  <span className="history-what">
+                    <span className={`dot ${r.move.amount < 0 ? 'dot-out' : 'dot-in'}`} />
+                    {r.move.type === 'ajuste' && r.move.amount < 0 ? 'Saldo quitado' : MOVE_LABEL[r.move.type] || r.move.type}
+                  </span>
+                  {(r.move.order || r.move.note) && (
+                    <small className="sub">
+                      {r.move.order && <span className="mini-code">{r.move.order.code}</span>}
+                      {r.move.order && r.move.note && ' · '}
+                      {r.move.note}
+                    </small>
+                  )}
+                </td>
+                <td className="muted">{r.move.by?.fullName || (r.move.type === 'compra' ? 'Cliente' : 'Automático')}</td>
+                <td className={`num nowrap ${r.move.amount < 0 ? 'neg' : 'pos'}${r.move.currency === 'COINS' ? ' cc' : ''}`}>
+                  <strong>{signed(r.move.amount, r.move.currency)}</strong>
+                </td>
+                <td><span className="badge badge-muted">{r.move.currency === 'EUR' ? 'Saldo €' : 'CHIKACOINS'}</span></td>
+              </tr>
+            )))}
+            {rows.length === 0 && <tr><td colSpan={5} className="muted center">Sin movimientos.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      {rows.length > shown && (
+        <div className="pad center">
+          <button type="button" className="btn btn-light btn-sm" onClick={() => setShown(shown + 30)}>Ver más ({rows.length - shown} restantes)</button>
+        </div>
+      )}
     </div>
   );
 }

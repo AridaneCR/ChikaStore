@@ -260,8 +260,14 @@ router.get('/users/:id', async (req, res) => {
   const user = await User.findById(req.params.id);
   if (!user) throw new HttpError(404, 'Usuario no encontrado');
   const [orders, movements] = await Promise.all([
-    Order.find({ user: user._id }).sort({ createdAt: -1 }).limit(50).lean(),
-    Movement.find({ user: user._id }).sort({ createdAt: -1 }).limit(50).lean(),
+    Order.find({ user: user._id }).sort({ createdAt: -1 }).limit(300).lean(),
+    // Historial de saldo: quién lo hizo (admin) y a qué pedido corresponde
+    Movement.find({ user: user._id })
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .populate('by', 'fullName')
+      .populate('order', 'orderNumber code')
+      .lean(),
   ]);
   res.json({ user: user.toPublic(), orders, movements });
 });

@@ -375,3 +375,14 @@ test('varios códigos de barras llevan al mismo producto', async () => {
   // Y ya se puede usar en otro producto
   assert.equal((await call('/admin/products', { method: 'POST', token: admin, body: { name: 'Agua', priceEurCents: 100, extraBarcodes: ['5449000214911'] } })).status, 201);
 });
+
+test('el historial del cliente incluye los ajustes de saldo del admin', async () => {
+  const admin = (await call('/auth/login', { method: 'POST', body: { identifier: 'admin3@test.com', password: 'adminadmin' } })).data.token;
+  const u = await call('/admin/users', { method: 'POST', token: admin, body: { fullName: 'Nora', email: 'nora@test.com', password: 'clave1234', balanceEurCents: 1000 } });
+  await call(`/admin/users/${u.data.id}/topup`, { method: 'POST', token: admin, body: { currency: 'EUR', amount: -300, note: 'Corrección' } });
+  const d = (await call(`/admin/users/${u.data.id}`, { token: admin })).data;
+  assert.equal(d.movements.length, 2);
+  const minus = d.movements.find((m) => m.amount === -300);
+  assert.equal(minus.note, 'Corrección');
+  assert.equal(minus.by.fullName, 'Admin 3');
+});

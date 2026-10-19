@@ -383,6 +383,18 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; accent-
 .row-actions { display: flex; gap: 8px; }
 .neg { color: var(--bad); }
 .pos { color: var(--ok); }
+.nowrap { white-space: nowrap; }
+.history-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.history-head .seg button small { color: inherit; opacity: 0.6; font-weight: 600; margin-left: 2px; }
+.history-what { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; white-space: nowrap; }
+.mini-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+.history-table .sub { display: block; margin-top: 2px; }
+.history-table .num.neg strong { color: var(--bad); }
+.history-table .num.pos strong { color: var(--ok); }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.dot-order { background: var(--ink-2); }
+.dot-in { background: var(--ok); }
+.dot-out { background: var(--bad); }
 .qty-input { width: 76px; text-align: right; padding: 6px 8px; }
 .pager { display: flex; justify-content: center; align-items: center; gap: 14px; padding: 16px; color: var(--muted); }
 
