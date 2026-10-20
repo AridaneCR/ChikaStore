@@ -34,6 +34,11 @@ function createApp() {
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
     if (err.status) return res.status(err.status).json({ error: err.message });
+    // Subida de fotos (multer)
+    if (err.name === 'MulterError') {
+      if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'La foto pesa demasiado (máximo 15 MB)' });
+      return res.status(400).json({ error: `No se pudo leer el archivo: ${err.message}` });
+    }
     if (err.name === 'ValidationError') {
       return res.status(400).json({ error: Object.values(err.errors).map((e) => e.message).join('. ') });
     }

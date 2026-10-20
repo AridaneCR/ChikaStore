@@ -166,6 +166,7 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; accent-
 }
 .dropzone:hover { border-color: var(--red); background: var(--red-soft); color: var(--red) !important; }
 .dropzone input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.dropzone.busy { cursor: progress; opacity: 0.7; }
 .dropzone span { display: inline-flex; align-items: center; gap: 8px; }
 .dz-filled img { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; }
 .alert { background: var(--bad-bg); color: var(--bad); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 0.88rem; font-weight: 500; }

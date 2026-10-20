@@ -8,6 +8,7 @@ import ImportProducts, { exportProducts } from './ImportProducts';
 import { Modal, Spinner, toast } from '../../components/ui';
 import { barcodeSvg, isValidBarcode } from '../../utils/barcode';
 import { CATEGORIES, centsToEuros, eurosToCents, formatCoins, formatEur, TAGS } from '../../utils/format';
+import { shrinkImage } from '../../utils/image';
 
 const EMPTY = { name: '', description: '', category: 'Sobres', tags: [], imageUrl: '', barcode: '', extraBarcodes: [], priceEur: '', coinsEnabled: true, priceCoins: '', stock: '', active: true };
 
@@ -68,6 +69,7 @@ export default function AdminProducts() {
   // false | 'main' (código principal) | 'extra' (añadir códigos adicionales, sin cerrar la cámara)
   const [scanning, setScanning] = useState(false);
   const [extraInput, setExtraInput] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [importing, setImporting] = useState(false);
   const formRef = useRef(null);
 
@@ -141,17 +143,22 @@ export default function AdminProducts() {
   };
 
   const upload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const form = new FormData();
-    form.append('image', file);
+    const original = e.target.files?.[0];
+    e.target.value = ''; // permite volver a elegir la misma foto si falla
+    if (!original) return;
+    setUploading(true);
     try {
+      const file = await shrinkImage(original);
+      const form = new FormData();
+      form.append('image', file);
       const { url } = await api('/admin/upload', { method: 'POST', form });
       setF((prev) => ({ ...prev, imageUrl: url }));
       toast('Foto subida');
     } catch (err) {
-      toast(err.message, 'bad');
+      toast(err.status ? err.message : 'No se pudo conectar con el servidor para subir la foto', 'bad');
       setShowUrl(true);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -277,9 +284,11 @@ export default function AdminProducts() {
             <label className="check"><input type="checkbox" checked={f.active} onChange={set('active')} /> Visible en la tienda</label>
           </fieldset>
 
-          <label className="dropzone">
-            <input type="file" accept="image/*" onChange={upload} />
-            {f.imageUrl ? (
+          <label className={`dropzone${uploading ? ' busy' : ''}`}>
+            <input type="file" accept="image/*" onChange={upload} disabled={uploading} />
+            {uploading ? (
+              <span><Icon name="upload" size={18} /> Subiendo foto…</span>
+            ) : f.imageUrl ? (
               <span className="dz-filled"><img src={f.imageUrl} alt="" /> Cambiar foto</span>
             ) : (
               <span><Icon name="upload" size={18} /> Subir foto del producto</span>

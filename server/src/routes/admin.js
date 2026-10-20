@@ -168,23 +168,40 @@ router.delete('/products/:id', async (req, res) => {
 });
 
 // Subida de imagen a Cloudinary (opcional; si no está configurado, usa una URL de imagen)
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => cb(null, /^image\//.test(file.mimetype)),
+});
 router.post('/upload', upload.single('image'), async (req, res) => {
-  if (!process.env.CLOUDINARY_CLOUD_NAME) {
-    throw new HttpError(501, 'Cloudinary no está configurado: pega una URL de imagen');
+  const missing = ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'].filter((k) => !String(process.env[k] || '').trim());
+  if (missing.length) {
+    throw new HttpError(501, `Cloudinary no está configurado (falta ${missing.join(', ')} en el servidor). Mientras tanto, pega una URL de imagen.`);
   }
-  if (!req.file) throw new HttpError(400, 'No se recibió ninguna imagen');
+  if (!req.file) throw new HttpError(400, 'No se recibió ninguna imagen (¿es un archivo de imagen?)');
   const { v2: cloudinary } = require('cloudinary'); // eslint-disable-line global-require
   cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME.trim(),
+    api_key: process.env.CLOUDINARY_API_KEY.trim(),
+    api_secret: process.env.CLOUDINARY_API_SECRET.trim(),
   });
-  const result = await new Promise((resolve, reject) => {
-    cloudinary.uploader
-      .upload_stream({ folder: 'chikastore' }, (err, r) => (err ? reject(err) : resolve(r)))
-      .end(req.file.buffer);
-  });
+  let result;
+  try {
+    result = await new Promise((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream({ folder: 'chikastore', resource_type: 'image' }, (err, r) => (err ? reject(err) : resolve(r)))
+        .end(req.file.buffer);
+    });
+  } catch (err) {
+    // Se explica el motivo en vez de un «Error interno»
+    const msg = String(err?.message || err?.error?.message || err);
+    console.error('Cloudinary:', err?.http_code || '', msg);
+    if (err?.http_code === 401 || /api_key|api key|signature|cloud_name|cloud name/i.test(msg)) {
+      throw new HttpError(502, `Cloudinary rechaza las claves (${msg}). Revisa CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET en Render.`);
+    }
+    if (/timeout|ETIMEDOUT|ECONNRESET/i.test(msg)) throw new HttpError(504, 'Cloudinary tardó demasiado. Prueba otra vez.');
+    throw new HttpError(502, `Cloudinary no aceptó la foto: ${msg}`);
+  }
   res.json({ url: result.secure_url });
 });
 
