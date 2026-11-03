@@ -39,7 +39,7 @@ export default function AdminUsers() {
         <aside className="card user-list">
           <label className="search-box small">
             <Icon name="search" size={16} />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nombre o correo" aria-label="Buscar usuario" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nombre, apodo, etiqueta o correo" aria-label="Buscar usuario" />
           </label>
           {!list ? <Spinner /> : list.length === 0 ? <p className="muted pad">Sin resultados.</p> : (
             <ul>
@@ -48,8 +48,11 @@ export default function AdminUsers() {
                   <button className={`user-row${selected === u.id ? ' on' : ''}`} onClick={() => setSelected(u.id)}>
                     <span className={`avatar${selected === u.id ? '' : ' avatar-light'}`}>{initials(u.fullName)}</span>
                     <span className="user-row-text">
-                      <strong>{u.fullName}</strong>
+                      <strong>{u.fullName}{u.adminAlias && <em className="alias"> · {u.adminAlias}</em>}</strong>
                       <small>{u.email}</small>
+                      {u.adminTags?.length > 0 && (
+                        <span className="admin-tags">{u.adminTags.map((t) => <span key={t}>#{t}</span>)}</span>
+                      )}
                     </span>
                     <span className="cc small-strong">{formatCoins(u.balanceCoins)} CC</span>
                   </button>
@@ -87,7 +90,7 @@ function UserEditor({ id, onSaved }) {
   const load = useCallback(() => {
     api(`/admin/users/${id}`).then((d) => {
       setData(d);
-      setF({ fullName: d.user.fullName, email: d.user.email, role: d.user.role, active: d.user.active });
+      setF({ fullName: d.user.fullName, email: d.user.email, role: d.user.role, active: d.user.active, adminAlias: d.user.adminAlias || '', tagsText: (d.user.adminTags || []).join(', ') });
     }).catch((e) => toast(e.message, 'bad'));
   }, [id]);
 
@@ -108,7 +111,9 @@ function UserEditor({ id, onSaved }) {
     e.preventDefault();
     setBusy(true);
     try {
-      await api(`/admin/users/${id}`, { method: 'PATCH', body: f });
+      const { tagsText, ...rest } = f;
+      const adminTags = tagsText.split(/[,#]+/).map((t) => t.trim()).filter(Boolean);
+      await api(`/admin/users/${id}`, { method: 'PATCH', body: { ...rest, adminTags } });
       await after('Usuario actualizado');
     } catch (err) { toast(err.message, 'bad'); } finally { setBusy(false); }
   };
@@ -157,6 +162,13 @@ function UserEditor({ id, onSaved }) {
           </label>
           <label className="check check-inline"><input type="checkbox" checked={f.active} onChange={set('active')} /> Cuenta activa</label>
         </div>
+        <fieldset className="admin-only">
+          <legend><Icon name="tag" size={14} /> Solo para el admin <small>· el cliente no lo ve</small></legend>
+          <div className="form-2">
+            <label>Apodo<input value={f.adminAlias} onChange={set('adminAlias')} maxLength={80} placeholder="Cris el de Commander" /></label>
+            <label>Etiquetas<input value={f.tagsText} onChange={set('tagsText')} placeholder="commander, jueves, vip" /></label>
+          </div>
+        </fieldset>
         <div className="form-actions">
           <button className="btn btn-primary" disabled={busy}>Guardar cambios</button>
         </div>

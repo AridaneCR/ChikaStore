@@ -6,6 +6,7 @@ const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/products');
 const orderRoutes = require('./routes/orders');
 const adminRoutes = require('./routes/admin');
+const eventRoutes = require('./routes/events');
 const { allowedOrigins } = require('./utils/origins');
 
 function createApp() {
@@ -26,6 +27,7 @@ function createApp() {
   app.use('/api/auth', authRoutes);
   app.use('/api/products', productRoutes);
   app.use('/api/orders', orderRoutes);
+  app.use('/api/events', eventRoutes);
   app.use('/api/admin', adminRoutes);
 
   app.use((req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));

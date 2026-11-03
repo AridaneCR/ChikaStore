@@ -18,6 +18,13 @@ const userSchema = new mongoose.Schema(
     // Recuperación de contraseña: solo se guarda el hash del enlace
     resetTokenHash: { type: String, select: false },
     resetTokenExpires: { type: Date, select: false },
+    // Solo para el admin: apodo y etiquetas para encontrar rápido al cliente (no los ve el cliente)
+    adminAlias: { type: String, default: '', trim: true, maxlength: 80 },
+    adminTags: {
+      type: [String],
+      default: [],
+      set: (list) => [...new Set((list || []).map((t) => String(t).trim().toLowerCase()).filter(Boolean))].slice(0, 20),
+    },
     // Login social
     googleId: { type: String },
     discordId: { type: String },
@@ -45,6 +52,11 @@ userSchema.methods.toPublic = function toPublic() {
     linked: { google: Boolean(this.googleId), discord: Boolean(this.discordId) },
     createdAt: this.createdAt,
   };
+};
+
+// Lo mismo que toPublic más los datos internos que solo ve el admin
+userSchema.methods.toAdmin = function toAdmin() {
+  return { ...this.toPublic(), adminAlias: this.adminAlias || '', adminTags: this.adminTags || [] };
 };
 
 module.exports = mongoose.model('User', userSchema);

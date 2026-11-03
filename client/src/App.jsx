@@ -7,6 +7,7 @@ import Admin from './pages/admin/Admin';
 import Cart from './pages/Cart';
 import { ForgotPassword, ResetPassword, SocialCallback } from './pages/AuthPages';
 import Login from './pages/Login';
+import Events from './pages/Events';
 import Orders from './pages/Orders';
 import Profile from './pages/Profile';
 import Scan from './pages/Scan';
@@ -23,6 +24,7 @@ const ROUTES = {
   '/carrito': Cart,
   '/pedidos': Orders,
   '/perfil': Profile,
+  '/eventos': Events,
 };
 
 // Pantallas de acceso que funcionan con o sin sesión (enlaces de correo, vuelta de Discord)
@@ -66,7 +68,7 @@ export default function App() {
   if (path.startsWith('/admin') && user.role === 'admin') {
     return (
       <>
-        <Admin path={path} />
+        <Admin path={path} query={route.query} />
         <Toasts />
       </>
     );

@@ -41,8 +41,23 @@ const productSchema = new mongoose.Schema(
     // Si está desactivado, el producto solo se vende en euros (se ignora priceCoins)
     coinsEnabled: { type: Boolean, default: true },
     priceCoins: { type: Number, default: 0, min: 0 },
-    // null = sin control de stock
+    // null = sin control de stock (en las entradas: aforo que queda)
     stock: { type: Number, default: null, min: 0 },
+    // 'entrada' = entrada para un evento: no sale en el catálogo, sino en Eventos, y solo se
+    // puede comprar una por persona
+    kind: { type: String, enum: ['producto', 'entrada'], default: 'producto' },
+    event: {
+      type: new mongoose.Schema(
+        {
+          startsAt: { type: Date, required: true },
+          endsAt: { type: Date, default: null },
+          location: { type: String, default: '', trim: true, maxlength: 160 },
+          details: { type: String, default: '', maxlength: 4000 },
+        },
+        { _id: false }
+      ),
+      default: undefined,
+    },
     active: { type: Boolean, default: true },
   },
   { timestamps: true }
@@ -50,6 +65,7 @@ const productSchema = new mongoose.Schema(
 
 productSchema.index({ active: 1, category: 1 });
 productSchema.index({ active: 1, tags: 1 });
+productSchema.index({ kind: 1, 'event.startsAt': 1 });
 productSchema.index({ barcode: 1 }, { unique: true, partialFilterExpression: { barcode: { $type: 'string' } } });
 productSchema.index({ extraBarcodes: 1 }, { unique: true, partialFilterExpression: { 'extraBarcodes.0': { $exists: true } } });
 

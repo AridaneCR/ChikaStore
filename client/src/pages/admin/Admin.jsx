@@ -1,6 +1,7 @@
 import Icon from '../../components/Icon';
 import { Brand } from '../../components/Navbar';
 import { useAuth } from '../../context/AuthContext';
+import AdminEvents from './AdminEvents';
 import AdminProducts from './AdminProducts';
 import AdminUsers from './AdminUsers';
 import Dashboard from './Dashboard';
@@ -8,10 +9,11 @@ import Dashboard from './Dashboard';
 const TABS = [
   ['/admin', 'Resumen y pedidos', 'chart', Dashboard],
   ['/admin/productos', 'Productos', 'box', AdminProducts],
+  ['/admin/eventos', 'Eventos', 'calendar', AdminEvents],
   ['/admin/usuarios', 'Usuarios', 'users', AdminUsers],
 ];
 
-export default function Admin({ path }) {
+export default function Admin({ path, query = {} }) {
   const { logout } = useAuth();
   const tab = TABS.find(([p]) => p === path) || TABS[0];
   const Page = tab[3];
@@ -31,7 +33,7 @@ export default function Admin({ path }) {
         <button className="sidebar-logout" onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión"><Icon name="logout" size={18} /> <span>Cerrar sesión</span></button>
       </aside>
       <main className="admin-main">
-        <Page />
+        <Page query={query} />
       </main>
     </div>
   );

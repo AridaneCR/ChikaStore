@@ -5,6 +5,7 @@ import ProductCard from '../components/ProductCard';
 import { Empty, Spinner, toast } from '../components/ui';
 import { useCart } from '../context/CartContext';
 import { CATEGORIES } from '../utils/format';
+import { EventCard, useEvents } from './Events';
 
 const SLIDES = [
   { tag: 'Reserva online · Recoge en tienda', sub: 'Tu tienda de cartas, juegos y mucho más' },
@@ -118,10 +119,26 @@ export default function Shop() {
         <CategoryGrid />
       </section>
 
+      <UpcomingEvents />
+
       <Section icon="flame" title="Productos destacados" link="#/productos?tag=destacado" params={{ tag: 'destacado' }} />
       <Section icon="star" title="Novedades" link="#/productos?tag=nuevo" params={{ tag: 'nuevo', sort: 'new' }} />
       <Section icon="tag" title="Ofertas" link="#/productos?tag=oferta" params={{ tag: 'oferta' }} />
     </div>
+  );
+}
+
+function UpcomingEvents() {
+  const [list, reload] = useEvents(false);
+  if (!list || list.length === 0) return null;
+  return (
+    <section className="section">
+      <div className="section-head">
+        <h2><Icon name="calendar" size={20} className="red" /> Próximos eventos</h2>
+        <a href="#/eventos" className="see-all">Ver todos <Icon name="arrowRight" size={14} /></a>
+      </div>
+      <div className="event-grid">{list.slice(0, 3).map((ev) => <EventCard key={ev._id} ev={ev} onChanged={reload} compact />)}</div>
+    </section>
   );
 }
 

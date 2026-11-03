@@ -9,7 +9,7 @@ const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // ?q=texto &category=Sobres &tag=nuevo|destacado|oferta &sort=... &page &limit
 router.get('/', async (req, res) => {
   const { q, category, tag, page = 1, limit = 24, sort = 'name' } = req.query;
-  const filter = { active: true };
+  const filter = { active: true, kind: { $ne: 'entrada' } }; // las entradas van en Eventos
   if (category) filter.category = category;
   if (tag) filter.tags = tag;
   if (q) {

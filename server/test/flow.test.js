@@ -404,3 +404,44 @@ test('informe para PDF: pedidos y saldos del periodo', async () => {
   assert.ok(old.data.users.some((u) => u.balanceEurCents > 0));
   assert.equal((await call('/admin/report?period=quincena', { token: admin })).status, 400);
 });
+
+test('eventos: una sola entrada por persona y se libera al cancelar', async () => {
+  const admin = (await call('/auth/login', { method: 'POST', body: { identifier: 'admin3@test.com', password: 'adminadmin' } })).data.token;
+  const tomorrow = new Date(Date.now() + 864e5).toISOString();
+  const ev = await call('/admin/events', { method: 'POST', token: admin, body: { name: 'Torneo de Commander', priceEurCents: 500, priceCoins: 500, stock: 2, startsAt: tomorrow, location: 'Tienda' } });
+  assert.equal(ev.status, 201);
+  assert.equal(ev.data.kind, 'entrada');
+  // No sale en el catálogo pero sí en Eventos
+  assert.equal((await call('/products?q=Commander')).data.total, 0);
+
+  const reg = await call('/admin/users', { method: 'POST', token: admin, body: { fullName: 'Tina', email: 'tina@test.com', password: 'clave1234', balanceEurCents: 5000 } });
+  const tina = (await call('/auth/login', { method: 'POST', body: { identifier: 'tina@test.com', password: 'clave1234' } })).data.token;
+  assert.equal((await call('/orders', { method: 'POST', token: tina, body: { currency: 'EUR', items: [{ productId: ev.data._id, quantity: 2 }] } })).status, 400);
+  const o1 = await call('/orders', { method: 'POST', token: tina, body: { currency: 'EUR', items: [{ productId: ev.data._id, quantity: 1 }] } });
+  assert.equal(o1.status, 201);
+  const again = await call('/orders', { method: 'POST', token: tina, body: { currency: 'EUR', items: [{ productId: ev.data._id, quantity: 1 }] } });
+  assert.equal(again.status, 409);
+  const list = (await call('/events', { token: tina })).data;
+  assert.equal(list.find((e) => e._id === ev.data._id).owned, true);
+  assert.equal((await call(`/admin/events/${ev.data._id}/attendees`, { token: admin })).data.length, 1);
+
+  // Cancelar libera la entrada y la plaza
+  await call(`/admin/orders/${o1.data._id}`, { method: 'PATCH', token: admin, body: { status: 'cancelado' } });
+  assert.equal((await call('/events', { token: tina })).data.find((e) => e._id === ev.data._id).owned, false);
+  assert.equal((await call('/orders', { method: 'POST', token: tina, body: { currency: 'EUR', items: [{ productId: ev.data._id, quantity: 1 }] } })).status, 201);
+  assert.ok(reg.data.id);
+});
+
+test('apodo y etiquetas internas del cliente', async () => {
+  const admin = (await call('/auth/login', { method: 'POST', body: { identifier: 'admin3@test.com', password: 'adminadmin' } })).data.token;
+  const u = (await call('/admin/users?q=tina', { token: admin })).data[0];
+  const upd = await call(`/admin/users/${u.id}`, { method: 'PATCH', token: admin, body: { adminAlias: 'Tina la de Commander', adminTags: ['Commander', 'jueves', 'commander'] } });
+  assert.deepEqual(upd.data.adminTags, ['commander', 'jueves']);
+  assert.equal((await call('/admin/users?q=la de commander', { token: admin })).data.length, 1);
+  assert.equal((await call('/admin/users?q=jueves', { token: admin })).data.length, 1);
+  // El cliente no ve sus etiquetas
+  const tina = (await call('/auth/login', { method: 'POST', body: { identifier: 'tina@test.com', password: 'clave1234' } })).data.token;
+  const me = (await call('/auth/me', { token: tina })).data.user;
+  assert.equal(me.adminAlias, undefined);
+  assert.equal(me.adminTags, undefined);
+});

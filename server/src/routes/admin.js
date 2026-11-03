@@ -7,6 +7,7 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const Movement = require('../models/Movement');
 const { buildReport } = require('../services/report');
+const TicketHolder = require('../models/TicketHolder');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { changeStatus, updateItems } = require('../services/orderService');
 const { HttpError } = require('../utils/money');
@@ -77,6 +78,7 @@ router.get('/products', async (req, res) => {
   }
   if (category) filter.category = category;
   if (active === 'true' || active === 'false') filter.active = active === 'true';
+  filter.kind = { $ne: 'entrada' }; // las entradas se gestionan en Eventos
   res.json(await Product.find(filter).sort({ name: 1 }).lean());
 });
 
@@ -205,6 +207,70 @@ router.post('/upload', upload.single('image'), async (req, res) => {
   res.json({ url: result.secure_url });
 });
 
+/* ================================ EVENTOS ================================ */
+// Cada evento es un producto de tipo «entrada» (se paga y se gestiona como un pedido normal)
+
+const parseDate = (v, label) => {
+  const d = new Date(v);
+  if (!v || Number.isNaN(d.getTime())) throw new HttpError(400, `${label} no válida`);
+  return d;
+};
+
+function eventPayload(body, current) {
+  const data = productPayload(body);
+  delete data.barcode;
+  delete data.extraBarcodes;
+  data.kind = 'entrada';
+  data.category = 'Otros';
+  const prev = current?.event || {};
+  const ev = {
+    startsAt: body.startsAt !== undefined ? parseDate(body.startsAt, 'Fecha de inicio') : prev.startsAt,
+    endsAt: body.endsAt !== undefined ? (body.endsAt ? parseDate(body.endsAt, 'Fecha de fin') : null) : prev.endsAt || null,
+    location: body.location !== undefined ? String(body.location).slice(0, 160) : prev.location || '',
+    details: body.details !== undefined ? String(body.details).slice(0, 4000) : prev.details || '',
+  };
+  if (!ev.startsAt) throw new HttpError(400, 'Pon la fecha y hora del evento');
+  if (ev.endsAt && ev.endsAt <= ev.startsAt) throw new HttpError(400, 'La hora de fin debe ser posterior al inicio');
+  data.event = ev;
+  return data;
+}
+
+router.get('/events', async (req, res) => {
+  const events = await Product.find({ kind: 'entrada' }).sort({ 'event.startsAt': -1 }).lean();
+  const sold = await TicketHolder.aggregate([
+    { $match: { event: { $in: events.map((e) => e._id) } } },
+    { $group: { _id: '$event', n: { $sum: 1 } } },
+  ]);
+  const count = new Map(sold.map((x) => [String(x._id), x.n]));
+  res.json(events.map((e) => ({ ...e, sold: count.get(String(e._id)) || 0 })));
+});
+
+router.post('/events', async (req, res) => {
+  const body = req.body || {};
+  if (!body.name) throw new HttpError(400, 'Ponle un nombre al evento');
+  const event = await Product.create(eventPayload(body));
+  res.status(201).json({ ...event.toObject(), sold: 0 });
+});
+
+router.patch('/events/:id', async (req, res) => {
+  const current = await Product.findOne({ _id: req.params.id, kind: 'entrada' });
+  if (!current) throw new HttpError(404, 'Evento no encontrado');
+  current.set(eventPayload(req.body || {}, current));
+  await current.save();
+  const sold = await TicketHolder.countDocuments({ event: current._id });
+  res.json({ ...current.toObject(), sold });
+});
+
+// Asistentes: quién tiene entrada y en qué pedido
+router.get('/events/:id/attendees', async (req, res) => {
+  const holders = await TicketHolder.find({ event: req.params.id })
+    .sort({ createdAt: 1 })
+    .populate('user', 'fullName email adminAlias')
+    .populate('order', 'orderNumber code status total currency')
+    .lean();
+  res.json(holders.map((h) => ({ id: h._id, at: h.createdAt, user: h.user, order: h.order })));
+});
+
 /* ================================ PEDIDOS ================================ */
 
 router.get('/orders', async (req, res) => {
@@ -220,7 +286,14 @@ router.get('/orders', async (req, res) => {
   if (q) {
     const term = String(q).trim();
     const users = await User.find(
-      { $or: [{ fullName: { $regex: escapeRegex(term), $options: 'i' } }, { email: { $regex: escapeRegex(term), $options: 'i' } }] },
+      {
+        $or: [
+          { fullName: { $regex: escapeRegex(term), $options: 'i' } },
+          { email: { $regex: escapeRegex(term), $options: 'i' } },
+          { adminAlias: { $regex: escapeRegex(term), $options: 'i' } },
+          { adminTags: term.toLowerCase() },
+        ],
+      },
       { _id: 1 }
     ).lean();
     const or = [{ code: { $regex: escapeRegex(term) } }, { user: { $in: users.map((u) => u._id) } }];
@@ -234,7 +307,7 @@ router.get('/orders', async (req, res) => {
       .sort({ createdAt: -1 })
       .skip((pg - 1) * lim)
       .limit(lim)
-      .populate('user', 'fullName email')
+      .populate('user', 'fullName email adminAlias')
       .lean(),
     Order.countDocuments(filter),
   ]);
@@ -242,7 +315,7 @@ router.get('/orders', async (req, res) => {
 });
 
 router.get('/orders/:id', async (req, res) => {
-  const order = await Order.findById(req.params.id).populate('user', 'fullName email').lean();
+  const order = await Order.findById(req.params.id).populate('user', 'fullName email adminAlias').lean();
   if (!order) throw new HttpError(404, 'Pedido no encontrado');
   res.json(order);
 });
@@ -253,7 +326,7 @@ router.patch('/orders/:id', async (req, res) => {
   if (items) await updateItems(req.params.id, items);
   if (status) await changeStatus(req.params.id, status, req.user._id);
   if (adminNote !== undefined) await Order.updateOne({ _id: req.params.id }, { adminNote: String(adminNote) });
-  const order = await Order.findById(req.params.id).populate('user', 'fullName email').lean();
+  const order = await Order.findById(req.params.id).populate('user', 'fullName email adminAlias').lean();
   if (!order) throw new HttpError(404, 'Pedido no encontrado');
   res.json(order);
 });
@@ -268,10 +341,12 @@ router.get('/users', async (req, res) => {
     filter.$or = [
       { fullName: { $regex: t, $options: 'i' } },
       { email: { $regex: t, $options: 'i' } },
+      { adminAlias: { $regex: t, $options: 'i' } },
+      { adminTags: { $regex: t, $options: 'i' } },
     ];
   }
   const users = await User.find(filter).sort({ fullName: 1 }).limit(500);
-  res.json(users.map((u) => u.toPublic()));
+  res.json(users.map((u) => u.toAdmin()));
 });
 
 router.get('/users/:id', async (req, res) => {
@@ -287,7 +362,7 @@ router.get('/users/:id', async (req, res) => {
       .populate('order', 'orderNumber code')
       .lean(),
   ]);
-  res.json({ user: user.toPublic(), orders, movements });
+  res.json({ user: user.toAdmin(), orders, movements });
 });
 
 // Crear usuario desde el panel: { fullName, email, password, role?, balanceEurCents?, balanceCoins? }
@@ -313,6 +388,8 @@ router.post('/users', async (req, res) => {
     email,
     role,
     password: await bcrypt.hash(String(password), 10),
+    adminAlias: req.body.adminAlias || '',
+    adminTags: Array.isArray(req.body.adminTags) ? req.body.adminTags : [],
     ...balances,
   });
 
@@ -321,7 +398,7 @@ router.post('/users', async (req, res) => {
   if (balances.balanceCoins) movements.push({ user: user._id, currency: 'COINS', amount: balances.balanceCoins, type: 'ajuste', by: req.user._id, note: note || 'Saldo inicial' });
   if (movements.length) await Movement.insertMany(movements);
 
-  res.status(201).json(user.toPublic());
+  res.status(201).json(user.toAdmin());
 });
 
 // Edita cualquier dato del usuario MENOS la contraseña
@@ -330,8 +407,12 @@ router.patch('/users/:id', async (req, res) => {
   const user = await User.findById(req.params.id);
   if (!user) throw new HttpError(404, 'Usuario no encontrado');
 
-  for (const k of ['fullName', 'email', 'role', 'active']) {
+  for (const k of ['fullName', 'email', 'role', 'active', 'adminAlias']) {
     if (body[k] !== undefined) user[k] = body[k];
+  }
+  if (body.adminTags !== undefined) {
+    if (!Array.isArray(body.adminTags)) throw new HttpError(400, 'Las etiquetas deben ser una lista');
+    user.adminTags = body.adminTags;
   }
   if (String(user._id) === String(req.user._id) && (user.role !== 'admin' || user.active === false)) {
     throw new HttpError(400, 'No puedes quitarte el rol de admin ni desactivarte a ti mismo');
@@ -351,7 +432,7 @@ router.patch('/users/:id', async (req, res) => {
 
   await user.save();
   if (movements.length) await Movement.insertMany(movements);
-  res.json(user.toPublic());
+  res.json(user.toAdmin());
 });
 
 // Recarga de saldo: { currency: 'EUR'|'COINS', amount (céntimos o coins, puede ser negativo), note }
@@ -373,7 +454,7 @@ router.post('/users/:id/topup', async (req, res) => {
   await Movement.create({
     user: user._id, currency, amount, type: amount > 0 ? 'recarga' : 'ajuste', by: req.user._id, note: note || '',
   });
-  res.json(user.toPublic());
+  res.json(user.toAdmin());
 });
 
 /* ============================== ESTADÍSTICAS ============================= */

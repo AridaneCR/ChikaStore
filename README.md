@@ -24,6 +24,9 @@ Tienda online de cartas, juegos y snacks con toques de rol (d20, cartas). Los cl
 | Código de barras | Cada producto puede tener su EAN del fabricante o un EAN-13 interno que genera la tienda (empieza por 2). El admin puede leerlo con la cámara, generar los que falten e imprimir etiquetas. Además admite **códigos adicionales** que llevan al mismo producto (p. ej. una bebida que engloba todos los sabores). Un código no puede estar en dos productos. |
 | Escanear | En el móvil, **Escanear** abre la cámara: cada código leído busca el producto y lo añade al carrito. Usa el lector del navegador (Chrome/Android) o ZXing (iPhone). Necesita HTTPS. |
 | Importar / exportar | En **Productos → Importar Excel** se sube un `.xlsx` o `.csv` (plantilla en `client/public/plantilla-productos.xlsx`). Primero se ve una vista previa fila a fila; luego crea o actualiza (por código de barras o por nombre). **Exportar Excel** descarga todos los productos con las mismas columnas para editarlos y volver a importarlos. |
+| Eventos | Panel → **Eventos**: fecha, lugar, cartel, precio (€ y/o CC) y plazas. En la tienda salen en **Eventos** y en la portada. Cada cliente solo puede comprar **una entrada por evento**; si se cancela el pedido, puede volver a comprarla. Lista de asistentes imprimible. |
+| Apodo y etiquetas | En **Usuarios**, el admin puede poner un apodo y etiquetas a cada cliente (el cliente no los ve). Sirven para buscarlo en Usuarios y en Pedidos. |
+| Edición rápida | Con sesión de admin, cada producto y evento de la tienda tiene un lápiz para editarlo sin ir al panel. |
 | Cancelar | Devuelve el stock. Si el pedido estaba pagado, devuelve el importe al saldo del cliente y le quita las CHIKACOINS que ganó. |
 
 Todo el dinero se guarda en **céntimos** (enteros) para evitar errores de redondeo.

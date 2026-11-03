@@ -1,10 +1,19 @@
+import { useEffect, useState } from 'react';
 import CardArt from './CardArt';
+import QuickEditProduct from './QuickEditProduct';
+import { useAuth } from '../context/AuthContext';
 import Icon, { Coin } from './Icon';
 import { useCart } from '../context/CartContext';
 import { acceptsCoins, formatCoins, formatEur } from '../utils/format';
 
-export default function ProductCard({ product, onAdd, preview = false }) {
+export default function ProductCard({ product: initial, onAdd, preview = false }) {
   const { isFav, toggleFav } = useCart();
+  const { user } = useAuth() || {};
+  const canEdit = !preview && user?.role === 'admin';
+  // Tras editar desde la tienda se muestra al momento la versión guardada
+  const [product, setProduct] = useState(initial);
+  const [editing, setEditing] = useState(false);
+  useEffect(() => setProduct(initial), [initial]);
   const soldOut = product.stock === 0;
   const tags = product.tags || [];
   const fav = !preview && isFav(product._id);
@@ -17,7 +26,13 @@ export default function ProductCard({ product, onAdd, preview = false }) {
           {tags.includes('nuevo') && <span className="flag flag-new">Nuevo</span>}
           {tags.includes('oferta') && <span className="flag flag-sale">Oferta</span>}
           {soldOut && <span className="flag flag-out">Agotado</span>}
+          {product.active === false && <span className="flag flag-out">Oculto</span>}
         </div>
+        {canEdit && (
+          <button className="edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${product.name}`} title="Editar producto">
+            <Icon name="pencil" size={15} />
+          </button>
+        )}
         {!preview && (
           <button
             className={`fav-btn${fav ? ' on' : ''}`}
@@ -48,6 +63,13 @@ export default function ProductCard({ product, onAdd, preview = false }) {
       <button className="btn btn-dark btn-block" disabled={soldOut} onClick={() => onAdd && onAdd(product)}>
         <Icon name="cart" size={16} /> {soldOut ? 'Sin existencias' : 'Añadir al carrito'}
       </button>
+      {editing && (
+        <QuickEditProduct
+          product={product}
+          onClose={() => setEditing(false)}
+          onSaved={(p) => { setProduct(p); setEditing(false); }}
+        />
+      )}
     </article>
   );
 }

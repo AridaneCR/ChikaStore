@@ -19,6 +19,14 @@ export const formatDate = (d) => (d ? new Date(d).toLocaleDateString('es-ES', { 
 export const formatDateTime = (d) =>
   d ? new Date(d).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' ·') : '—';
 
+// «sáb 15 nov · 18:00»
+export const formatEventDate = (d) => {
+  if (!d) return '';
+  const x = new Date(d);
+  const day = x.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '');
+  return `${day} · ${x.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
+};
+
 export const orderNo = (n) => `#${String(n).padStart(6, '0')}`;
 export const initials = (name = '') =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();

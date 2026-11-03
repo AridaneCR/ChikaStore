@@ -4,6 +4,7 @@ const Product = require('../models/Product');
 const User = require('../models/User');
 const Counter = require('../models/Counter');
 const Movement = require('../models/Movement');
+const TicketHolder = require('../models/TicketHolder');
 const { generateOrderCode } = require('./orderCode');
 const { coinsEarnedForCents, HttpError } = require('../utils/money');
 
@@ -86,6 +87,11 @@ async function buildLines(rawItems, currency) {
     if (currency === 'COINS' && product.coinsEnabled === false) {
       throw new HttpError(400, `"${product.name}" no se puede pagar con CHIKACOINS. Quítalo del carrito o paga en euros.`);
     }
+    if (product.kind === 'entrada') {
+      if (quantity > 1) throw new HttpError(400, `Solo se puede comprar una entrada por persona para "${product.name}"`);
+      const end = product.event?.endsAt || product.event?.startsAt;
+      if (end && new Date(end) < new Date()) throw new HttpError(400, `El evento "${product.name}" ya ha pasado`);
+    }
     const unitPrice = currency === 'COINS' ? product.priceCoins : product.priceEurCents;
     return { product, quantity, unitPrice };
   });
@@ -119,7 +125,14 @@ async function createOrder(userId, rawItems, currency) {
   const lines = await buildLines(rawItems, currency);
   const total = lines.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
 
-  const reserved = await reserveStock(lines);
+  const tickets = await claimTickets(userId, lines);
+  let reserved = [];
+  try {
+    reserved = await reserveStock(lines);
+  } catch (err) {
+    if (tickets.length) await TicketHolder.deleteMany({ _id: { $in: tickets } });
+    throw err;
+  }
   let charged = null; // { field, amount }
 
   try {
@@ -167,13 +180,36 @@ async function createOrder(userId, rawItems, currency) {
       movements.push({ user: userId, currency: 'COINS', amount: coinsEarned, type: 'recompensa', order: order._id });
     }
     if (movements.length) await Movement.insertMany(movements);
+    if (tickets.length) await TicketHolder.updateMany({ _id: { $in: tickets } }, { order: order._id });
 
     return order;
   } catch (err) {
     if (charged) await credit(userId, charged.field, charged.amount);
     await releaseStock(reserved);
+    if (tickets.length) await TicketHolder.deleteMany({ _id: { $in: tickets } });
     throw err;
   }
+}
+
+/* ----------------------------- entradas ----------------------------- */
+
+// Reserva la plaza de cada entrada del carrito para este usuario (una por evento).
+async function claimTickets(userId, lines) {
+  const claimed = [];
+  for (const l of lines) {
+    if (l.product.kind !== 'entrada') continue;
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const h = await TicketHolder.create({ event: l.product._id, user: userId });
+      claimed.push(h._id);
+    } catch (err) {
+      // eslint-disable-next-line no-await-in-loop
+      if (claimed.length) await TicketHolder.deleteMany({ _id: { $in: claimed } });
+      if (err && err.code === 11000) throw new HttpError(409, `Ya tienes una entrada para "${l.product.name}"`);
+      throw err;
+    }
+  }
+  return claimed;
 }
 
 /* ------------------------- gestión (admin) ------------------------- */
@@ -220,6 +256,8 @@ async function changeStatus(orderId, newStatus, adminId) {
 
   if (newStatus === 'cancelado') {
     await releaseStock(order.items.map((i) => ({ productId: i.product, quantity: i.quantity })));
+    // Al cancelar, el cliente puede volver a comprar la entrada
+    await TicketHolder.deleteMany({ order: order._id });
     if (order.status === 'pagado') {
       // Devolución: lo pagado vuelve al saldo (coins → coins; € de saldo o tienda → saldo en €)
       const field = order.currency === 'COINS' ? 'balanceCoins' : 'balanceEurCents';
@@ -249,6 +287,11 @@ async function updateItems(orderId, newItems) {
     const q = Number(it.quantity);
     if (!Number.isInteger(q) || q < 0 || q > MAX_QTY_PER_ITEM) throw new HttpError(400, 'Cantidad no válida');
     wanted.set(String(it.productId), q);
+  }
+  // Entradas de este pedido: máximo 1; si se quitan, el cliente puede volver a comprarla
+  const ticketIds = new Set((await TicketHolder.find({ order: order._id }, { event: 1 }).lean()).map((h) => String(h.event)));
+  for (const [id, q] of wanted) {
+    if (ticketIds.has(id) && q > 1) throw new HttpError(400, 'Solo se puede tener una entrada por persona');
   }
 
   const reserved = [];
@@ -294,6 +337,8 @@ async function updateItems(orderId, newItems) {
   }
 
   await releaseStock(released);
+  const removedTickets = [...ticketIds].filter((id) => wanted.get(id) === 0);
+  if (removedTickets.length) await TicketHolder.deleteMany({ order: order._id, event: { $in: removedTickets } });
   order.items = items;
   order.total = items.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
   await order.save();

@@ -53,6 +53,7 @@ export default function Navbar({ route }) {
           <a href="#/productos" className={isActive('/productos') ? 'active' : ''}>Productos</a>
           <a href="#/categorias" className={route.path === '/categorias' ? 'active' : ''}>Categorías</a>
           <a href="#/productos?tag=nuevo" className={isActive('/productos', 'nuevo') ? 'active' : ''}>Novedades</a>
+          <a href="#/eventos" className={route.path === '/eventos' ? 'active' : ''}>Eventos</a>
           <a href="#/productos?tag=oferta" className={`nav-sale${isActive('/productos', 'oferta') ? ' active' : ''}`}>Ofertas</a>
         </nav>
 

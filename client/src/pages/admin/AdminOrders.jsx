@@ -54,7 +54,7 @@ export default function AdminOrders({ onChange }) {
           </select>
           <label className="search-box small">
             <Icon name="search" size={16} />
-            <input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Nº pedido, código, nombre o correo" aria-label="Buscar pedidos" />
+            <input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Nº pedido, código, nombre, apodo o correo" aria-label="Buscar pedidos" />
           </label>
         </div>
       </div>
@@ -71,7 +71,7 @@ export default function AdminOrders({ onChange }) {
                   <tr key={o._id}>
                     <td><strong>{orderNo(o.orderNumber)}</strong><small className="sub">{formatDateTime(o.createdAt)}</small></td>
                     <td><CodePill code={o.code} /></td>
-                    <td>{o.user?.fullName}<small className="sub">{o.user?.email}</small></td>
+                    <td>{o.user?.fullName}{o.user?.adminAlias && <em className="alias"> · {o.user.adminAlias}</em>}<small className="sub">{o.user?.email}</small></td>
                     <td className="num"><strong>{formatPrice(o.total, o.currency)}</strong></td>
                     <td><StatusBadge status={o.status} /></td>
                     <td>

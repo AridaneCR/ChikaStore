@@ -6,7 +6,7 @@ import { CodePill, Empty, Modal, StatusBadge } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { navigate } from '../router';
-import { acceptsCoins, formatCoins, formatEur, formatPrice, orderNo } from '../utils/format';
+import { acceptsCoins, formatCoins, formatEur, formatEventDate, formatPrice, orderNo } from '../utils/format';
 
 export default function Cart() {
   const { lines, setQty, clear, totals } = useCart();
@@ -67,13 +67,14 @@ export default function Cart() {
             <div key={product._id} className="card cart-line">
               <div className="cart-thumb"><CardArt product={product} size={26} /></div>
               <div className="cart-info">
-                <strong>{product.name}</strong>
+                <strong>{product.kind === 'entrada' && <Icon name="ticket" size={14} className="red" />} {product.name}</strong>
+                {product.kind === 'entrada' && product.event?.startsAt && <small className="ticket-when">Entrada · {formatEventDate(product.event.startsAt)}</small>}
                 <small>{formatEur(product.priceEurCents)}{acceptsCoins(product) ? ` · ${formatCoins(product.priceCoins)} CC` : ' · solo en €'} / ud.</small>
               </div>
               <div className="stepper">
                 <button onClick={() => setQty(product._id, quantity - 1)} aria-label="Quitar uno">−</button>
                 <span>{quantity}</span>
-                <button onClick={() => setQty(product._id, quantity + 1)} aria-label="Añadir uno">+</button>
+                <button onClick={() => setQty(product._id, quantity + 1)} aria-label="Añadir uno" disabled={product.kind === 'entrada'} title={product.kind === 'entrada' ? 'Una entrada por persona' : undefined}>+</button>
               </div>
               <strong className="cart-line-total">{fmt((coins ? product.priceCoins : product.priceEurCents) * quantity)}</strong>
               <button className="icon-btn ghost" onClick={() => setQty(product._id, 0)} aria-label={`Eliminar ${product.name}`}><Icon name="trash" size={18} /></button>

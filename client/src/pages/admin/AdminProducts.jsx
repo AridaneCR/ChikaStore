@@ -59,7 +59,7 @@ const toForm = (p) => ({
   stock: p.stock ?? '',
 });
 
-export default function AdminProducts() {
+export default function AdminProducts({ query = {} }) {
   const [list, setList] = useState(null);
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState(null); // null = nuevo, producto = edición
@@ -81,6 +81,16 @@ export default function AdminProducts() {
     const t = setTimeout(load, 250);
     return () => clearTimeout(t);
   }, [load]);
+
+  // #/admin/productos?edit=<id> (botón «Edición completa» desde la tienda)
+  const editedFromLink = useRef(false);
+  useEffect(() => {
+    if (!query.edit || editedFromLink.current || !list) return;
+    editedFromLink.current = true;
+    const found = list.find((p) => p._id === query.edit);
+    if (found) startEdit(found);
+    else api(`/admin/products?q=`).then((all) => { const p = all.find((x) => x._id === query.edit); if (p) startEdit(p); }).catch(() => {});
+  }, [list, query.edit]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
   const toggleTag = (t) => setF({ ...f, tags: f.tags.includes(t) ? f.tags.filter((x) => x !== t) : [...f.tags, t] });

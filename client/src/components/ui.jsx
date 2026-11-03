@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import Icon from './Icon';
 import { STATUS } from '../utils/format';
@@ -40,7 +41,8 @@ export function Modal({ title, subtitle, onClose, children, wide }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
-  return (
+  // En un portal: así el modal no queda atrapado dentro de una tarjeta con transform
+  return createPortal(
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal${wide ? ' modal-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}>
         <div className="modal-head">
@@ -52,7 +54,8 @@ export function Modal({ title, subtitle, onClose, children, wide }) {
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

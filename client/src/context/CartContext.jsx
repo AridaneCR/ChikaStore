@@ -19,20 +19,23 @@ export function CartProvider({ children }) {
   useEffect(() => save(CART_KEY, lines), [lines]);
   useEffect(() => save(FAV_KEY, favs), [favs]);
 
+  // Las entradas de eventos: una por persona
+  const maxQty = (product) => (product?.kind === 'entrada' ? 1 : 99);
+
   const add = (product, quantity = 1) =>
     setLines((prev) => {
       const found = prev.find((l) => l.product._id === product._id);
       if (found) {
-        return prev.map((l) => (l.product._id === product._id ? { ...l, quantity: Math.min(l.quantity + quantity, 99) } : l));
+        return prev.map((l) => (l.product._id === product._id ? { ...l, quantity: Math.min(l.quantity + quantity, maxQty(product)) } : l));
       }
-      return [...prev, { product, quantity }];
+      return [...prev, { product, quantity: Math.min(quantity, maxQty(product)) }];
     });
 
   const setQty = (id, quantity) =>
     setLines((prev) =>
       quantity <= 0
         ? prev.filter((l) => l.product._id !== id)
-        : prev.map((l) => (l.product._id === id ? { ...l, quantity: Math.min(quantity, 99) } : l))
+        : prev.map((l) => (l.product._id === id ? { ...l, quantity: Math.min(quantity, maxQty(l.product)) } : l))
     );
 
   const clear = () => setLines([]);
